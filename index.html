@@ -677,6 +677,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
     <textarea class="field-input field-ta" id="rm-notes" placeholder="e.g. 2 lbs chicken breast, 3 cups rice, 1 cup black beans, made 8 servings"></textarea>
 
+    <div class="field-lbl">Directions (optional)</div>
+    <textarea class="field-input field-ta" id="rm-directions" placeholder="1. Preheat oven to 400°F&#10;2. Season chicken with salt, pepper, garlic&#10;3. Bake 25 min until internal temp 165°F&#10;..." style="min-height:90px"></textarea>
+
+    <div class="field-lbl">Source URL (optional)</div>
+    <input class="field-input" type="url" id="rm-url" placeholder="https://..." style="margin-bottom:8px">
+
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
       <button class="btn-sm" onclick="aiEstimateRecipe()" id="rm-ai-btn">✨ AI Estimate Macros</button>
       <span style="font-size:11px;color:var(--muted)">or fill manually:</span>
@@ -692,7 +698,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="macro-field"><label>Vitamin A %</label><input type="number" id="rm-vita" placeholder="0" oninput="updatePerServing()"></div>
     </div>
     <div id="rm-per-serving" style="display:none" class="computed-macros"></div>
-    <button class="btn-full" onclick="saveRecipe()">Save Recipe</button>
+    <button class="btn-full" id="rm-save-btn" onclick="saveRecipe()">Save Recipe</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-recipe')">Cancel</button>
   </div>
 </div>
@@ -1390,7 +1396,7 @@ function toggleCat(el,val){
 
 function openNewRecipeModal(){
   document.getElementById('recipe-modal-title').textContent='New Recipe';
-  ['rm-name','rm-servings','rm-notes','rm-cal','rm-prot','rm-carbs','rm-fat','rm-fiber','rm-vita'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  ['rm-name','rm-servings','rm-notes','rm-directions','rm-url','rm-cal','rm-prot','rm-carbs','rm-fat','rm-fiber','rm-vita','rm-sugar','rm-sodium','rm-iron'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
   document.getElementById('rm-per-serving').style.display='none';
   document.querySelectorAll('#rm-course-tags .tag-opt').forEach(t=>t.classList.remove('selected'));
   document.querySelectorAll('#rm-cat-tags .tag-opt').forEach(t=>t.classList.remove('selected'));
@@ -1461,9 +1467,12 @@ function saveRecipe(){
   if(!name||!srvs){toast('Name and servings required');return}
   const recipe={
     id:Date.now(),name,servings:srvs,notes:document.getElementById('rm-notes').value,
+    directions:document.getElementById('rm-directions')?.value||'',
+    url:document.getElementById('rm-url')?.value.trim()||'',
     cal:+document.getElementById('rm-cal').value||0,prot:+document.getElementById('rm-prot').value||0,
     carbs:+document.getElementById('rm-carbs').value||0,fat:+document.getElementById('rm-fat').value||0,
     fiber:+document.getElementById('rm-fiber').value||0,vita:+document.getElementById('rm-vita').value||0,
+    sugar:+document.getElementById('rm-sugar')?.value||0,sodium:+document.getElementById('rm-sodium')?.value||0,iron:+document.getElementById('rm-iron')?.value||0,
     course:rmSelectedCourse||'none',cats:rmSelectedCats||[],
     photo:recipePhotoData||null,favorite:false,
     baseId:tweakBaseId||null,created:Date.now()
@@ -1538,8 +1547,15 @@ function renderRecipes(){
           <div class="rcp-cell"><div class="rcp-v" style="color:var(--orange)">${Math.round(r.vita/s)}%</div><div class="rcp-l">Vit A</div></div>
         </div>
         ${r.notes?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4">${r.notes}</div>`:''}
+        ${r.url?`<a href="${r.url}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--teal);text-decoration:none;margin-bottom:10px;padding:5px 10px;border:1px solid var(--teal);border-radius:8px;font-family:'Archivo',sans-serif;font-weight:700">🔗 View Original Recipe</a>`:''}
+        ${r.directions?`
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-family:'Archivo',sans-serif">Directions</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${r.directions}</div>
+          </div>`:''}
         <div class="rc-actions">
           <button class="btn-recipe primary" onclick="openLogRecipe(${r.id})">+ Log Serving</button>
+          <button class="btn-recipe" onclick="editRecipe(${r.id})">✏️ Edit</button>
           <button class="btn-recipe" onclick="openTweakModal(${r.id})">Tweak</button>
           <button class="btn-recipe" style="flex:0;padding:9px 12px" onclick="deleteRecipe(${r.id})">🗑</button>
         </div>
@@ -2018,7 +2034,7 @@ function doBulkImport(){
       if(existingNames.has(r.name.toLowerCase())){skipped++;return;}
       recipes.push({
         id:Date.now()+Math.random(),
-        name:r.name,servings:r.servings||1,notes:r.notes||'',
+         name:r.name,servings:r.servings||1,notes:r.notes||'',directions:r.directions||'',url:r.url||'',
         cal:r.cal||0,prot:r.prot||0,carbs:r.carbs||0,fat:r.fat||0,
         fiber:r.fiber||0,vita:r.vita||0,iron:r.iron||0,sodium:r.sodium||0,sugar:r.sugar||0,
         course:r.course||'none',cats:r.cats||[],
@@ -2492,6 +2508,76 @@ ${newSupp.cal} cal · ${newSupp.iron}mg iron · ${newSupp.sodium}mg sodium`)){
   }catch(e){
     toast('Scan lookup failed — try manually');
   }
+}
+
+
+// ══ EDIT RECIPE ══
+function editRecipe(id){
+  const r=recipes.find(x=>x.id===id);if(!r)return;
+  document.getElementById('recipe-modal-title').textContent='Edit Recipe';
+  document.getElementById('rm-name').value=r.name||'';
+  document.getElementById('rm-servings').value=r.servings||'';
+  document.getElementById('rm-notes').value=r.notes||'';
+  const dirEl=document.getElementById('rm-directions');if(dirEl)dirEl.value=r.directions||'';
+  const urlEl=document.getElementById('rm-url');if(urlEl)urlEl.value=r.url||'';
+  ['cal','prot','carbs','fat','fiber','vita'].forEach(k=>{
+    const el=document.getElementById('rm-'+k);if(el)el.value=r[k]||0;
+  });
+  ['sugar','sodium','iron'].forEach(k=>{
+    const el=document.getElementById('rm-'+k);if(el)el.value=r[k]||0;
+  });
+  // Set course
+  document.querySelectorAll('#rm-course-tags .tag-opt').forEach(t=>t.classList.remove('selected'));
+  document.querySelectorAll('#rm-course-tags .tag-opt').forEach(t=>{
+    if(t.textContent.toLowerCase().includes(r.course||'none'))t.classList.add('selected');
+  });
+  rmSelectedCourse=r.course||'none';
+  // Set cats
+  rmSelectedCats=[...(r.cats||[])];
+  document.querySelectorAll('#rm-cat-tags .tag-opt').forEach(t=>{
+    const cat=t.getAttribute('onclick')?.match(/'(\w+)'\)$/)?.[1];
+    if(cat&&rmSelectedCats.includes(cat))t.classList.add('selected');
+  });
+  // Set photo
+  recipePhotoData=r.photo||null;
+  document.getElementById('rm-photo-wrap').innerHTML=r.photo?`<img src="${r.photo}">`:'<div class="recipe-photo-placeholder"><div>📷</div><div>Tap to add photo</div></div>';
+  // Store edit id
+  tweakBaseId=null;
+  document.getElementById('rm-save-btn').onclick=()=>updateRecipe(id);
+  updatePerServing();
+  openOverlay('overlay-recipe');
+}
+
+function updateRecipe(id){
+  const idx=recipes.findIndex(x=>x.id===id);if(idx<0)return;
+  const name=document.getElementById('rm-name').value.trim();
+  const srvs=+document.getElementById('rm-servings').value;
+  if(!name||!srvs){toast('Name and servings required');return;}
+  recipes[idx]={
+    ...recipes[idx],
+    name,servings:srvs,
+    notes:document.getElementById('rm-notes').value,
+    directions:document.getElementById('rm-directions')?.value||'',
+    url:document.getElementById('rm-url')?.value.trim()||'',
+    cal:+document.getElementById('rm-cal').value||0,
+    prot:+document.getElementById('rm-prot').value||0,
+    carbs:+document.getElementById('rm-carbs').value||0,
+    fat:+document.getElementById('rm-fat').value||0,
+    fiber:+document.getElementById('rm-fiber').value||0,
+    vita:+document.getElementById('rm-vita').value||0,
+    sugar:+document.getElementById('rm-sugar')?.value||0,
+    sodium:+document.getElementById('rm-sodium')?.value||0,
+    iron:+document.getElementById('rm-iron')?.value||0,
+    course:rmSelectedCourse||'none',
+    cats:rmSelectedCats||[],
+    photo:recipePhotoData||null,
+  };
+  S('fl_recipes',recipes);
+  // Reset save button back to normal
+  document.getElementById('rm-save-btn').onclick=saveRecipe;
+  closeOverlay('overlay-recipe');
+  renderRecipes();
+  toast('Recipe updated!');
 }
 
 function clearToday(){const label=activeDayOffset===0?'today':new Date(getActiveDayKey()).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!confirm('Clear '+label+'?'))return;entries=[];S('fl_e_'+getActiveDayKey(),entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Cleared')}
