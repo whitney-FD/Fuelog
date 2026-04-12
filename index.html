@@ -227,17 +227,82 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .recipe-photo-placeholder div:first-child{font-size:28px;margin-bottom:4px}
 .recipe-photo-placeholder div:last-child{font-size:11px}
 
+
+/* ── CALORIE HERO ── */
+.cal-hero{margin:12px 16px 8px;background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:14px 16px;position:relative;overflow:hidden}
+.cal-hero::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--lime);border-radius:16px 16px 0 0}
+.cal-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.cal-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px}
+.cal-val{font-family:'Archivo',sans-serif;font-size:38px;font-weight:900;color:var(--lime);line-height:1}
+.cal-goal-txt{font-size:16px;color:var(--muted);font-weight:400}
+.cal-rem-wrap{text-align:right}
+.cal-rem{font-size:13px;font-weight:700;color:var(--text)}
+.cal-pct{font-size:11px;color:var(--muted);margin-top:2px}
+.cal-bar-wrap{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.cal-bar-fill{height:100%;background:var(--lime);border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1);max-width:100%}
+.cal-bar-fill.over{background:var(--red)}
+
+/* ── MACRO TRIO ── */
+.macro-trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 8px}
+.mt-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:10px 12px;position:relative;overflow:hidden}
+.mt-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c);border-radius:12px 12px 0 0}
+.mt-val{font-family:'Archivo',sans-serif;font-size:20px;font-weight:900;color:var(--c);line-height:1;margin-bottom:2px}
+.mt-unit{font-size:12px;font-weight:400}
+.mt-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:5px}
+.mt-bar{height:3px;background:var(--border);border-radius:2px;margin-bottom:4px}
+.mt-fill{height:100%;background:var(--c);border-radius:2px;transition:width .5s ease;max-width:100%}
+.mt-goal{font-size:10px;color:var(--muted2)}
+
+/* ── MICRO ROW ── */
+.micro-row{display:flex;flex-direction:column;gap:5px;padding:0 16px 8px}
+.micro-item{display:flex;align-items:center;gap:8px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+.micro-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;width:36px;flex-shrink:0}
+.micro-bar-wrap{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.micro-fill{height:100%;background:var(--c);border-radius:2px;transition:width .5s ease;max-width:100%}
+.micro-val{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;min-width:60px;text-align:right}
+
+
+/* MEAL GROUPS */
+.meal-section{margin:0 16px 8px}
+.meal-section-hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 0 5px;cursor:pointer;border-bottom:1px solid var(--border)}
+.meal-section-hdr-left{display:flex;align-items:center;gap:7px}
+.meal-section-icon{font-size:15px}
+.meal-section-name{font-family:'Archivo',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.meal-section-cal{font-size:11px;color:var(--muted2)}
+.meal-section-chevron{color:var(--muted);font-size:11px;transition:transform .2s}
+.meal-section-chevron.collapsed{transform:rotate(-90deg)}
+.meal-section-body{padding-top:6px}
+.meal-section-body.hidden{display:none}
+.meal-empty{font-size:12px;color:var(--muted2);padding:6px 0 4px;font-style:italic}
+
+/* SUPP HISTORY */
+.supp-history{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.supp-hist-controls{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.supp-hist-btn{padding:4px 10px;border-radius:100px;border:1px solid var(--border);background:var(--s2);font-size:10px;font-family:'Archivo',sans-serif;font-weight:700;color:var(--muted);cursor:pointer;transition:all .2s}
+.supp-hist-btn.active{background:var(--lime);color:#000;border-color:var(--lime)}
+.supp-hist-grid{overflow-x:auto;padding-bottom:4px}
+.supp-hist-table{border-collapse:collapse;font-size:10px;min-width:100%}
+.supp-hist-table th{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:0 4px 5px;text-align:center;white-space:nowrap;font-family:'Archivo',sans-serif}
+.supp-hist-table th:first-child{text-align:left;padding-left:0;min-width:80px}
+.supp-hist-dot{width:14px;height:14px;border-radius:3px;margin:1px auto;cursor:default}
+.supp-hist-dot.taken{background:var(--lime)}
+.supp-hist-dot.missed{background:var(--border)}
+.supp-hist-dot.future{background:transparent;border:1px solid var(--border2)}
+.supp-hist-name{color:var(--text);font-weight:600;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
+.supp-hist-toggle{font-size:10px;color:var(--lime);cursor:pointer;margin-top:4px;display:inline-block}
+
 /* SUPPLEMENTS */
-.supp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 16px 10px}
-.supp-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center}
-.supp-card.done{border-color:var(--lime-dim);opacity:.7}
-.supp-info{flex:1;min-width:0}
-.supp-name{font-size:13px;font-weight:700;color:var(--text)}
-.supp-meta{font-size:10px;color:var(--muted);margin-top:2px}
-.supp-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all .2s}
-.supp-check.checked{background:var(--lime);border-color:var(--lime);color:#000}
-.supp-section-lbl{padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
-.supp-iron-toggle{font-size:10px;color:var(--muted);padding:2px 8px;border:1px solid var(--border);border-radius:100px;background:none;cursor:pointer;margin-left:8px}
+.supp-wrapper{margin:0 16px 10px;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.supp-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.supp-title{font-family:'Archivo',sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.supp-chips{display:flex;flex-wrap:wrap;gap:5px}
+.supp-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:100px;border:1px solid var(--border);background:var(--s2);cursor:pointer;transition:all .15s}
+.supp-chip.checked{border-color:var(--lime);background:rgba(212,245,60,.1)}
+.supp-chip-box{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--muted2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px;transition:all .15s}
+.supp-chip.checked .supp-chip-box{background:var(--lime);border-color:var(--lime);color:#000}
+.supp-chip-name{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
+.supp-chip.checked .supp-chip-name{color:var(--lime)}
+.supp-qty{width:38px;background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:1px 4px;color:var(--text);font-size:10px;outline:none;text-align:right;margin-left:2px}
 .supp-iron-toggle.active{border-color:var(--lime);color:var(--lime)}
 
 /* TOAST */
@@ -261,72 +326,54 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 <!-- TODAY -->
 <div class="screen active" id="screen-today">
   <div class="page-top">
-    <div class="page-title">FUEL<span>LOG</span></div>
-    <div class="page-sub" id="today-date-sub"></div>
-  </div>
-  <div class="rings-row">
-    <div class="ring-card" style="--c:var(--lime)">
-      <div class="rc-label">Calories</div>
-      <div class="rc-val" id="r-cal">0</div>
-      <div class="rc-goal">of <span id="r-cal-g">1600</span></div>
-      <div class="rc-bar"><div class="rc-fill" id="r-cal-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-cal-rem">1600 left</div>
-    </div>
-    <div class="ring-card" style="--c:var(--blue)">
-      <div class="rc-label">Protein</div>
-      <div class="rc-val" id="r-prot">0<small style="font-size:13px">g</small></div>
-      <div class="rc-goal">of <span id="r-prot-g">135</span>g</div>
-      <div class="rc-bar"><div class="rc-fill" id="r-prot-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-prot-rem">135g left</div>
-    </div>
-    <div class="ring-card" style="--c:var(--purple)">
-      <div class="rc-label">Fiber</div>
-      <div class="rc-val" id="r-fiber">0<small style="font-size:13px">g</small></div>
-      <div class="rc-goal">of <span id="r-fiber-g">25</span>g</div>
-      <div class="rc-bar"><div class="rc-fill" id="r-fiber-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-fiber-rem">25g left</div>
-    </div>
-    <div class="ring-card" style="--c:var(--orange)">
-      <div class="rc-label">Vitamin A</div>
-      <div class="rc-val" id="r-vita">0<small style="font-size:13px">%</small></div>
-      <div class="rc-goal">of <span id="r-vita-g">100</span>%</div>
-      <div class="rc-bar"><div class="rc-fill" id="r-vita-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-vita-rem">100% left</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="page-title">FUEL<span>LOG</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="shiftActiveDay(-1)" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">‹</button>
+        <div id="today-date-sub" onclick="jumpToToday()" style="font-size:12px;color:var(--muted);cursor:pointer;text-align:center;min-width:110px"></div>
+        <button onclick="shiftActiveDay(1)" id="day-next-btn" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">›</button>
+      </div>
     </div>
   </div>
-  <div class="secondary-macros">
-    <div class="sm-card" style="--c:var(--yellow)">
-      <div><div class="sm-label">Carbs</div><div class="sm-goal">of <span id="sm-carbs-g">160</span>g</div></div>
-      <div class="sm-val" id="sm-carbs">0g</div>
+  <!-- CALORIE HERO -->
+  <div class="cal-hero">
+    <div class="cal-hero-top">
+      <div>
+        <div class="cal-label">CALORIES</div>
+        <div class="cal-val"><span id="r-cal">0</span><span class="cal-goal-txt"> / <span id="r-cal-g">1600</span></span></div>
+      </div>
+      <div class="cal-rem-wrap">
+        <div class="cal-rem" id="r-cal-rem">1600 left</div>
+        <div class="cal-pct" id="r-cal-pct">0%</div>
+      </div>
     </div>
-    <div class="sm-card" style="--c:var(--teal)">
-      <div><div class="sm-label">Fat</div><div class="sm-goal">of <span id="sm-fat-g">58</span>g</div></div>
-      <div class="sm-val" id="sm-fat">0g</div>
+    <div class="cal-bar-wrap"><div class="cal-bar-fill" id="r-cal-bar" style="width:0"></div></div>
+  </div>
+
+  <!-- MACRO TRIO: Protein / Carbs / Fat -->
+  <div class="macro-trio">
+    <div class="mt-card" style="--c:var(--blue)">
+      <div class="mt-val" id="r-prot"><span id="r-prot-num">0</span><span class="mt-unit">g</span></div>
+      <div class="mt-label">Protein</div>
+      <div class="mt-bar"><div class="mt-fill" id="r-prot-bar" style="width:0"></div></div>
+      <div class="mt-goal">/ <span id="r-prot-g">135</span>g</div>
+    </div>
+    <div class="mt-card" style="--c:var(--yellow)">
+      <div class="mt-val" id="sm-carbs"><span id="sm-carbs-num">0</span><span class="mt-unit">g</span></div>
+      <div class="mt-label">Carbs</div>
+      <div class="mt-bar"><div class="mt-fill" id="sm-carbs-bar" style="width:0"></div></div>
+      <div class="mt-goal">/ <span id="sm-carbs-g">160</span>g</div>
+    </div>
+    <div class="mt-card" style="--c:var(--teal)">
+      <div class="mt-val" id="sm-fat"><span id="sm-fat-num">0</span><span class="mt-unit">g</span></div>
+      <div class="mt-label">Fat</div>
+      <div class="mt-bar"><div class="mt-fill" id="sm-fat-bar" style="width:0"></div></div>
+      <div class="mt-goal">/ <span id="sm-fat-g">58</span>g</div>
     </div>
   </div>
-  <div class="rings-row" id="extra-rings-row" style="padding-top:0">
-    <div class="ring-card" style="--c:var(--orange)">
-      <div class="rc-label">Sugar</div>
-      <div class="rc-val" id="r-sugar">0<small style="font-size:13px">g</small></div>
-      <div class="rc-goal">of <span id="r-sugar-g">40</span>g</div>
-      <div class="rc-bar"><div class="rc-fill" id="r-sugar-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-sugar-rem">40g left</div>
-    </div>
-    <div class="ring-card" style="--c:var(--yellow)">
-      <div class="rc-label">Sodium</div>
-      <div class="rc-val" id="r-sodium">0<small style="font-size:13px">mg</small></div>
-      <div class="rc-goal">of <span id="r-sodium-g">2300</span>mg</div>
-      <div class="rc-bar"><div class="rc-fill" id="r-sodium-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-sodium-rem">2300mg left</div>
-    </div>
-    <div class="ring-card" style="--c:var(--red)">
-      <div class="rc-label">Iron</div>
-      <div class="rc-val" id="r-iron">0<small style="font-size:13px">%</small></div>
-      <div class="rc-goal">of <span id="r-iron-g">100</span>%</div>
-      <div class="rc-bar"><div class="rc-fill" id="r-iron-bar" style="width:0"></div></div>
-      <div class="rc-rem" id="r-iron-rem">100% left</div>
-    </div>
-  </div>
+
+  <!-- MICRO ROW: dynamic — all tracked extras -->
+  <div class="micro-row" id="micro-row"></div>
   <div class="deficit-card">
     <div class="dc-row">
       <div>
@@ -366,12 +413,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   </div>
 
   <!-- SUPPLEMENTS -->
-  <div class="supp-card" id="supp-card">
+  <div class="supp-wrapper" id="supp-card">
     <div class="supp-hdr">
       <span class="supp-title">💊 Supplements</span>
-      <button class="btn-sm" onclick="openSuppSettings()">Manage</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-sm" onclick="selectAllSupps()" id="supp-select-all-btn">All</button>
+        <button class="btn-sm" onclick="toggleSuppHistory()" id="supp-hist-toggle-btn">History</button>
+        <button class="btn-sm" onclick="openSuppSettings()">Manage</button>
+      </div>
     </div>
-    <div id="supp-list"></div>
+    <div class="supp-chips" id="supp-list"></div>
+    <div class="supp-history" id="supp-history" style="display:none">
+      <div class="supp-hist-controls" id="supp-hist-controls">
+        <button class="supp-hist-btn active" onclick="setSuppHistRange(7,this)">7 days</button>
+        <button class="supp-hist-btn" onclick="setSuppHistRange(30,this)">30 days</button>
+        <button class="supp-hist-btn" onclick="setSuppHistRange(90,this)">90 days</button>
+        <button class="supp-hist-btn" onclick="setSuppHistRange(365,this)">1 year</button>
+      </div>
+      <div class="supp-hist-grid" id="supp-hist-grid"></div>
+    </div>
   </div>
 
   <div class="coach-card">
@@ -380,20 +440,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <a class="coach-open-btn" href="https://claude.ai/chat/10a6caeb-0cf3-4c56-9668-fd1b3ea4706f" target="_blank">Open Coach →</a>
     </div>
     <div class="coach-txt" id="coach-txt">Log your first meal and I'll guide you through the day.</div>
-  </div>
-  <div id="supp-section">
-    <div style="display:flex;align-items:center;padding:8px 16px 2px;justify-content:space-between">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Daily Supplements</div>
-      <button onclick="toggleSuppSection()" id="supp-collapse-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer">Hide</button>
-    </div>
-    <div id="supp-body">
-      <div class="supp-section-lbl">Morning</div>
-      <div class="supp-grid" id="supp-morning"></div>
-      <div class="supp-section-lbl">Pre-Workout</div>
-      <div class="supp-grid" id="supp-preworkout"></div>
-      <div class="supp-section-lbl">Night</div>
-      <div class="supp-grid" id="supp-night"></div>
-    </div>
   </div>
   <div class="log-input-section">
     <div class="input-lbl">Log Food</div>
@@ -514,8 +560,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
     </div>
     <div class="goal-section-title">Tracked Nutrients</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Choose which nutrients show on your dashboard.</div>
-    <div id="nutrient-toggles"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Choose which extras show on your dashboard.</div>
+    <div id="nutrient-toggles" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
     <div class="goal-section-title">Export / Import Data</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Export saves ALL your data (logs, recipes, saved meals, food library) as a file. Import restores it. Do this before any app update.</div>
     <button class="btn-full" onclick="exportData()" style="background:var(--teal);color:#000;margin-bottom:8px">⬇️ Export All Data</button>
@@ -753,9 +799,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="modal-handle"></div>
     <div class="modal-title">Manage Supplements</div>
     <div id="supp-settings-list"></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <input class="field-input" type="text" id="modal-supp-name" placeholder="Add supplement..." style="margin-bottom:0;flex:1">
-      <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px" onclick="addCustomSupp()">+ Add</button>
+    <div style="margin-top:12px">
+      <div class="field-lbl">Add Supplement</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input class="field-input" type="text" id="modal-supp-name" placeholder="Name..." style="margin-bottom:0;flex:1">
+        <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
+      </div>
+      <button class="btn-full secondary" onclick="openSuppScan()" style="margin-top:0">📷 Scan Barcode to Add</button>
+      <div class="scanner-wrap" id="supp-scan-wrap" style="margin-top:8px">
+        <div class="scanner-inner">
+          <video id="supp-scan-video" autoplay playsinline></video>
+          <div class="scan-frame"></div>
+        </div>
+        <div class="scan-status" id="supp-scan-status">Point camera at supplement barcode</div>
+      </div>
     </div>
     <button class="btn-full secondary" style="margin-top:12px" onclick="closeOverlay('overlay-supp-settings')">Done</button>
   </div>
@@ -775,7 +832,12 @@ const COURSE_LABELS={breakfast:'Breakfast',main:'Main Dish',side:'Side Dish',sna
 
 // ══ STATE ══
 const todayKey=new Date().toDateString();
-let entries=J('fl_e_'+todayKey,[]);
+let activeDayOffset=0; // 0=today, -1=yesterday, etc.
+function getActiveDayKey(){
+  const d=new Date();d.setDate(d.getDate()+activeDayOffset);
+  return d.toDateString();
+}
+let entries=J('fl_e_'+getActiveDayKey(),[]);
 let savedMeals=J('fl_saved',[]);
 let recipes=J('fl_recipes',[]);
 let foodLibrary=J('fl_foods',[]);
@@ -798,14 +860,14 @@ let questionEntryId=null;
 let questionPendingMacros=null;
 
 const DEFAULT_SUPPS=[
-  {id:'supp_seed',name:'Seed Probiotic',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true},
-  {id:'supp_fishoil',name:'Fish Oil',cal:10,prot:0,carbs:0,fat:1,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true},
-  {id:'supp_creatine',name:'Creatine',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true},
-  {id:'supp_vitc',name:'Vitamin C',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true},
-  {id:'supp_iron',name:'Iron',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:18,sodium:0,sugar:0,active:true},
-  {id:'supp_vitd',name:'Vitamin D',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true},
-  {id:'supp_zinc',name:'Zinc',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true},
-  {id:'supp_prework',name:'Nutricost Xtrem (pre-workout)',cal:5,prot:0,carbs:1,fat:0,fiber:0,vita:0,iron:0,sodium:85,sugar:0,active:true,hasQty:true}
+  {id:'supp_seed',serving:1,name:'Seed Probiotic',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true,note:''},
+  {id:'supp_fishoil',name:'Fish Oil',cal:10,prot:0,carbs:0,fat:1,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true,note:'1g fat',serving:0.5},
+  {id:'supp_creatine',serving:1,name:'Creatine',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true,note:''},
+  {id:'supp_vitc',serving:1,name:'Vitamin C',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true,note:''},
+  {id:'supp_iron',serving:1,name:'Iron',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:25,sodium:0,sugar:0,active:true,note:'25mg'},
+  {id:'supp_vitd',serving:1,name:'Vitamin D',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true,note:''},
+  {id:'supp_zinc',serving:1,name:'Zinc',cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true,note:''},
+  {id:'supp_prework',serving:1,name:'Nutricost Xtrem (pre-workout)',cal:5,prot:0,carbs:1,fat:0,fiber:0,vita:0,iron:0,sodium:85,sugar:0,active:true,hasQty:true,note:'½–¾ scoop'}
 ];
 
 let supplements=J('fl_supps',null);
@@ -820,7 +882,7 @@ const ALL_NUTRIENTS=[
   {key:'fat',label:'Fat',unit:'g',color:'var(--teal)',default:true,primary:false},
   {key:'sugar',label:'Sugar',unit:'g',color:'var(--red)',default:true,primary:false},
   {key:'sodium',label:'Sodium',unit:'mg',color:'var(--orange)',default:true,primary:false},
-  {key:'iron',label:'Iron',unit:'mg',color:'var(--purple)',default:false,primary:false},
+  {key:'iron',label:'Iron',unit:'mg',color:'var(--purple)',default:true,primary:false},
 ];
 
 let nutrientToggles=J('fl_ntoggles',null);
@@ -831,10 +893,10 @@ if(!nutrientToggles){
 }
 
 let appToggles=J('fl_toggles',{water:false,streaks:true});
-let dailyWater=J('fl_water_'+new Date().toDateString(),0);
-let burnKcal=J('fl_burn_'+new Date().toDateString(),0);
-let dailyNotes=J('fl_notes_'+new Date().toDateString(),'');
-let suppChecks=J('fl_supp_'+new Date().toDateString(),{});
+let dailyWater=J('fl_water_'+getActiveDayKey(),0);
+let burnKcal=J('fl_burn_'+getActiveDayKey(),0);
+let dailyNotes=J('fl_notes_'+getActiveDayKey(),'');
+let suppChecks=J('fl_supp_'+getActiveDayKey(),{});
 
 function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v:d}catch{return d}}
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
@@ -860,7 +922,7 @@ function applyUpdate(){
 
 // ══ INIT ══
 document.getElementById('today-date-sub').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-loadGoalsForm();renderSlots();render();buildWeek();renderSuppManager();renderNutrientToggles();applyToggles();
+loadGoalsForm();renderSlots();render();buildWeek();renderSuppManager();renderNutrientToggles();applyToggles();updateDayHeader();
 // Load saved notes + burn
 const nEl=document.getElementById('daily-notes');if(nEl)nEl.value=dailyNotes;
 const bEl=document.getElementById('burn-inp');if(bEl){bEl.value=burnKcal||'';updateNetDisplay();}
@@ -1057,8 +1119,8 @@ Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate
 }
 
 // ══ ADD/DELETE ENTRIES ══
-function addEntry(e){entries.push(e);S('fl_e_'+todayKey,entries);render()}
-function deleteEntry(id){entries=entries.filter(e=>e.id!==id);S('fl_e_'+todayKey,entries);render();refreshCoach()}
+function addEntry(e){entries.push(e);S('fl_e_'+getActiveDayKey(),entries);render()}
+function deleteEntry(id){entries=entries.filter(e=>e.id!==id);S('fl_e_'+getActiveDayKey(),entries);render();refreshCoach()}
 
 // ══ EDIT ENTRY ══
 function openEditEntry(id){
@@ -1076,22 +1138,6 @@ function openEditEntry(id){
   openOverlay('overlay-edit');
 }
 
-function saveEditEntry(){
-  const e=entries.find(x=>x.id===editEntryId);if(!e)return;
-  const qty=+document.getElementById('edit-qty').value||1;
-  e.name=document.getElementById('edit-name').value;
-  e.slot=document.getElementById('edit-slot').value;
-  e.cal=Math.round(+document.getElementById('edit-cal').value*qty);
-  e.prot=Math.round(+document.getElementById('edit-prot').value*qty*10)/10;
-  e.carbs=Math.round(+document.getElementById('edit-carbs').value*qty*10)/10;
-  e.fat=Math.round(+document.getElementById('edit-fat').value*qty*10)/10;
-  e.fiber=Math.round(+document.getElementById('edit-fiber').value*qty*10)/10;
-  e.vita=Math.round(+document.getElementById('edit-vita').value*qty);
-  S('fl_e_'+todayKey,entries);
-  closeOverlay('overlay-edit');
-  render();refreshCoach();
-  toast('Entry updated');
-}
 
 // ══ BARCODE ══
 async function toggleScan(){
@@ -1172,18 +1218,45 @@ ${missed.length?'MISSED (past scheduled time): '+missed.join(', '):''}`
 // ══ RENDER ══
 function render(){
   const t=totals(entries);const g=goals;
-  setRing('cal',Math.round(t.cal),g.cal,'','kcal left','kcal over');
-  setRing('prot',Math.round(t.prot*10)/10,g.prot,'g','g left','g over');
-  setRing('fiber',Math.round(t.fiber*10)/10,g.fiber,'g','g left','g over');
-  setRing('vita',Math.round(t.vita),g.vita,'%','% left','% over');
+
+  // ── Calorie hero ──
+  const calPct=Math.min(Math.round((t.cal/g.cal)*100),100);
+  const calOver=t.cal>g.cal;
+  const calRem=Math.max(0,Math.round(g.cal-t.cal));
+  document.getElementById('r-cal').textContent=Math.round(t.cal);
   document.getElementById('r-cal-g').textContent=g.cal;
-  document.getElementById('r-prot-g').textContent=g.prot;
-  document.getElementById('r-fiber-g').textContent=g.fiber;
-  document.getElementById('r-vita-g').textContent=g.vita;
-  document.getElementById('sm-carbs').textContent=Math.round(t.carbs*10)/10+'g';
-  document.getElementById('sm-fat').textContent=Math.round(t.fat*10)/10+'g';
-  document.getElementById('sm-carbs-g').textContent=g.carbs;
-  document.getElementById('sm-fat-g').textContent=g.fat;
+  document.getElementById('r-cal-pct').textContent=calPct+'%';
+  const calBar=document.getElementById('r-cal-bar');
+  if(calBar){calBar.style.width=calPct+'%';calBar.classList.toggle('over',calOver);}
+  const calRemEl=document.getElementById('r-cal-rem');
+  if(calRemEl)calRemEl.textContent=calOver?Math.round(t.cal-g.cal)+' over':calRem+' left';
+
+  // ── Macro trio ──
+  const macros=[
+    {key:'prot',val:Math.round(t.prot*10)/10,goal:g.prot,unit:'g',barId:'r-prot-bar',valId:'r-prot',goalId:'r-prot-g'},
+    {key:'carbs',val:Math.round(t.carbs*10)/10,goal:g.carbs,unit:'g',barId:'sm-carbs-bar',valId:'sm-carbs',goalId:'sm-carbs-g'},
+    {key:'fat',val:Math.round(t.fat*10)/10,goal:g.fat,unit:'g',barId:'sm-fat-bar',valId:'sm-fat',goalId:'sm-fat-g'},
+  ];
+  macros.forEach(m=>{
+    const over=m.val>m.goal;
+    const el=document.getElementById(m.valId);
+    if(el)el.style.color=over?'var(--red)':'';
+    const numEl=document.getElementById(m.valId+'-num');
+    if(numEl)numEl.textContent=m.val;
+    const gl=document.getElementById(m.goalId);if(gl)gl.textContent=m.goal;
+    const bar=document.getElementById(m.barId);
+    if(bar){
+      bar.style.width=Math.min((m.val/m.goal)*100,100)+'%';
+      bar.style.background=over?'var(--red)':'';
+    }
+    // Show over amount
+    const goalEl=document.getElementById(m.goalId);
+    if(goalEl&&over)goalEl.textContent=m.goal+' +'+Math.round((m.val-m.goal)*10)/10+' over';
+    else if(goalEl)goalEl.textContent=m.goal;
+  });
+
+  // ── Micro row — dynamic ──
+  renderMicroRow(t,g);
   const def=g.cal-t.cal;const tdeeD=g.tdee-t.cal;
   const dcT=document.getElementById('dc-today');
   dcT.textContent=(def>=0?'+':'')+Math.round(def)+' kcal';
@@ -1227,20 +1300,44 @@ function setSlot(s){
 
 function renderEntries(){
   const el=document.getElementById('entries-list');
-  const vis=activeSlot==='all'?entries:slotEntries(activeSlot);
-  if(!vis.length){el.innerHTML=`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">${activeSlot==='all'?'Nothing logged yet':'Nothing for '+SLOT_LABELS[activeSlot]}</div></div>`;return;}
+  // Filter out supplement entries from food log display
+  const foodEntries=entries.filter(e=>e.src!=='supplement');
+  const vis=activeSlot==='all'?foodEntries:foodEntries.filter(e=>e.slot===activeSlot);
+
+  if(!vis.length&&foodEntries.length===0){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">Nothing logged yet</div></div>`;return;
+  }
+
   if(activeSlot==='all'){
     let html='';
     SLOTS.forEach(s=>{
-      const se=slotEntries(s);if(!se.length)return;
+      const se=foodEntries.filter(e=>e.slot===s);
       const st=totals(se);
-      html+=`<div class="meal-group"><div class="meal-group-hdr">${SLOT_ICONS[s]} ${SLOT_LABELS[s]}<span class="meal-group-cal">${Math.round(st.cal)} kcal</span></div>${se.slice().reverse().map(entryHTML).join('')}</div>`;
+      const hasFood=se.length>0;
+      const bodyId=`meal-body-${s}`;
+      const chevId=`meal-chev-${s}`;
+      const collapsed=mealCollapsed[s]||false;
+      html+=`<div class="meal-section">
+        <div class="meal-section-hdr" onclick="toggleMealSection('${s}')">
+          <div class="meal-section-hdr-left">
+            <span class="meal-section-icon">${SLOT_ICONS[s]}</span>
+            <span class="meal-section-name">${SLOT_LABELS[s]}</span>
+            ${hasFood?`<span class="meal-section-cal">${Math.round(st.cal)} kcal · ${Math.round(st.prot*10)/10}g P</span>`:''}
+          </div>
+          <span class="meal-section-chevron ${collapsed?'collapsed':''}" id="${chevId}">▾</span>
+        </div>
+        <div class="meal-section-body ${collapsed?'hidden':''}" id="${bodyId}">
+          ${hasFood?se.slice().reverse().map(entryHTML).join(''):`<div class="meal-empty">Nothing logged</div>`}
+        </div>
+      </div>`;
     });
-    const unslotted=entries.filter(e=>!e.slot);
-    if(unslotted.length)html+=`<div class="meal-group"><div class="meal-group-hdr">Other</div>${unslotted.slice().reverse().map(entryHTML).join('')}</div>`;
-    el.innerHTML=html||`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">Nothing logged yet</div></div>`;
+    const unslotted=foodEntries.filter(e=>!e.slot);
+    if(unslotted.length){
+      html+=`<div class="meal-section"><div class="meal-section-hdr"><div class="meal-section-hdr-left"><span class="meal-section-name">Other</span></div></div><div class="meal-section-body">${unslotted.map(entryHTML).join('')}</div></div>`;
+    }
+    el.innerHTML=html;
   }else{
-    el.innerHTML=`<div style="padding:0 16px">${vis.slice().reverse().map(entryHTML).join('')}</div>`;
+    el.innerHTML=vis.length?`<div style="padding:0 16px">${vis.slice().reverse().map(entryHTML).join('')}</div>`:`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">Nothing for ${SLOT_LABELS[activeSlot]}</div></div>`;
   }
 }
 
@@ -1653,7 +1750,7 @@ function importData(e){
           }
           // If day already has entries, leave it alone — no duplicates
         });
-        entries=J('fl_e_'+todayKey,[]);
+        entries=J('fl_e_'+getActiveDayKey(),[]);
       }
 
       render();buildWeek();renderRecipes();
@@ -1669,55 +1766,89 @@ function importData(e){
 function renderSupps(){
   const el=document.getElementById('supp-list');if(!el)return;
   const active=supplements.filter(s=>s.active);
-  if(!active.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:4px 0">No supplements. Add them in Goals → Supplement Manager.</div>';return;}
+  if(!active.length){el.innerHTML='<div style="font-size:11px;color:var(--muted)">None. Add in Goals → Manage.</div>';return;}
   el.innerHTML=active.map(s=>{
     const checked=suppChecks[s.id]||false;
-    const qtyHtml=s.hasQty?`<div class="supp-qty-wrap"><input class="supp-qty" type="number" id="sqty-${s.id}" value="${suppChecks[s.id+'_qty']||1}" min="0.25" step="0.25" style="width:50px"></div>`:'';
-    return `<div class="supp-item">
-      <div class="supp-check ${checked?'checked':''}" onclick="toggleSupp('${s.id}')">${checked?'✓':''}</div>
-      <div class="supp-name">${s.name}</div>
-      ${qtyHtml}
-      <div class="supp-meta">${s.cal?s.cal+'cal':'0cal'}</div>
+    const srv=s.serving!=null&&s.serving!==1?` ·${s.serving}x`:'';
+    const qtyInput=s.hasQty?`<input class="supp-qty" type="number" id="sqty-${s.id}" value="${suppChecks[s.id+'_qty']||1}" min="0.25" step="0.25" onclick="event.stopPropagation()">`:'' ;
+    return `<div class="supp-chip ${checked?'checked':''}" onclick="toggleSupp('${s.id}')">
+      <div class="supp-chip-box">${checked?'✓':''}</div>
+      <span class="supp-chip-name">${s.name}${srv}</span>
+      ${qtyInput}
     </div>`;
   }).join('');
+  // Update All button label
+  const allChecked=active.every(s=>suppChecks[s.id]);
+  const btn=document.getElementById('supp-select-all-btn');
+  if(btn)btn.textContent=allChecked?'None':'All';
 }
 
 function toggleSupp(id){
   const s=supplements.find(x=>x.id===id);if(!s)return;
   const wasChecked=suppChecks[id]||false;
   suppChecks[id]=!wasChecked;
-  // Get qty for pre-workout
+  // Get serving multiplier + qty for pre-workout
+  const srv=s.serving!=null?s.serving:1;
   const qtyEl=document.getElementById('sqty-'+id);
   const qty=qtyEl?parseFloat(qtyEl.value)||1:1;
   if(s.hasQty)suppChecks[id+'_qty']=qty;
-  S('fl_supp_'+new Date().toDateString(),suppChecks);
+  S('fl_supp_'+getActiveDayKey(),suppChecks);
   if(!wasChecked){
-    // Log supplement as entry
-    const mul=qty;
-    addEntry({id:Date.now(),name:s.name+(qty!==1?` (${qty} srv)`:''),cal:Math.round((s.cal||0)*mul),prot:Math.round((s.prot||0)*mul*10)/10,carbs:Math.round((s.carbs||0)*mul*10)/10,fat:Math.round((s.fat||0)*mul*10)/10,fiber:Math.round((s.fiber||0)*mul*10)/10,vita:Math.round((s.vita||0)*mul),iron:Math.round((s.iron||0)*mul),sodium:Math.round((s.sodium||0)*mul),sugar:0,slot:'breakfast',src:'supplement',time:nowTime(),conf:'high',note:''});
-    toast(s.name+' logged');
+    const mul=srv*qty;
+    const srvLabel=srv!==1?` (${srv} srv)`:'';
+    addEntry({id:Date.now(),name:s.name+srvLabel,cal:Math.round((s.cal||0)*mul),prot:Math.round((s.prot||0)*mul*10)/10,carbs:Math.round((s.carbs||0)*mul*10)/10,fat:Math.round((s.fat||0)*mul*10)/10,fiber:Math.round((s.fiber||0)*mul*10)/10,vita:Math.round((s.vita||0)*mul),iron:Math.round((s.iron||0)*mul*10)/10,sodium:Math.round((s.sodium||0)*mul),sugar:0,slot:'breakfast',src:'supplement',time:nowTime(),conf:'high',note:''});
+    toast(s.name+(srvLabel?` ${srv} srv`:'' )+' logged');
   }else{
     // Remove the last supplement entry with that name
     const idx=entries.map(e=>e.src).lastIndexOf('supplement');
-    if(idx>-1&&entries[idx].name.startsWith(s.name)){entries.splice(idx,1);S('fl_e_'+todayKey,entries);render();}
+    if(idx>-1&&entries[idx].name.startsWith(s.name)){entries.splice(idx,1);S('fl_e_'+getActiveDayKey(),entries);render();}
     toast(s.name+' removed');
   }
   renderSupps();
 }
 
 function renderSuppManager(){
-  const el=document.getElementById('supp-manager-list');if(!el)return;
-  el.innerHTML=supplements.map((s,i)=>`
-    <div class="goal-row" style="margin-bottom:6px">
-      <div class="goal-info"><div class="gl">${s.name}</div></div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" ${s.active?'checked':''} onchange="toggleSuppActive(${i},this.checked)" style="width:20px;height:20px;cursor:pointer">
-        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px" onclick="deleteSupp(${i})">×</button>
-      </div>
-    </div>`).join('');
-  // Also render in settings modal
-  const mel=document.getElementById('supp-settings-list');if(!mel)return;
-  mel.innerHTML=el.innerHTML;
+  // Goals page list — compact rows with editable iron/cal fields
+  const el=document.getElementById('supp-manager-list');
+  if(el){
+    el.innerHTML=supplements.map((s,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" ${s.active?'checked':''} onchange="toggleSuppActive(${i},this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div style="font-size:10px;color:var(--muted)">${s.cal?s.cal+'cal':''} ${s.iron?s.iron+'mg iron':''} ${s.fat?s.fat+'g fat':''} ${s.sodium?s.sodium+'mg sodium':''}</div>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+          <input type="number" value="${s.serving!=null?s.serving:1}" placeholder="1" min="0.1" step="0.25"
+            onchange="updateSuppField(${i},'serving',+this.value)"
+            style="width:44px;background:var(--s2);border:1px solid var(--lime-dim);border-radius:6px;padding:3px 6px;color:var(--lime);font-size:11px;font-weight:700;outline:none;text-align:right"
+            title="Serving size (1=full, 0.5=half)">
+          <span style="font-size:9px;color:var(--muted2);white-space:nowrap">srv</span>
+          <input type="number" value="${s.iron||0}" placeholder="0" min="0" step="1"
+            onchange="updateSuppField(${i},'iron',+this.value)"
+            style="width:46px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text);font-size:11px;outline:none;text-align:right"
+            title="Iron (mg)">
+          <span style="font-size:9px;color:var(--muted2)">mg</span>
+          <input type="number" value="${s.cal||0}" placeholder="0" min="0" step="1"
+            onchange="updateSuppField(${i},'cal',+this.value)"
+            style="width:40px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text);font-size:11px;outline:none;text-align:right"
+            title="Calories">
+          <span style="font-size:9px;color:var(--muted2)">cal</span>
+          <button onclick="deleteSupp(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0 2px">×</button>
+        </div>
+      </div>`).join('');
+  }
+  // Modal list — same
+  const mel=document.getElementById('supp-settings-list');
+  if(mel)mel.innerHTML=el?el.innerHTML:'';
+}
+
+function updateSuppField(idx,field,val){
+  supplements[idx][field]=val;
+  S('fl_supps',supplements);
+  renderSuppManager();
+  renderSupps();
+  toast('Saved');
 }
 
 function toggleSuppActive(idx,val){supplements[idx].active=val;S('fl_supps',supplements);renderSuppManager();renderSupps();}
@@ -1734,13 +1865,14 @@ function openSuppSettings(){openOverlay('overlay-supp-settings');renderSuppManag
 // ══ NUTRIENT TOGGLES ══
 function renderNutrientToggles(){
   const el=document.getElementById('nutrient-toggles');if(!el)return;
-  el.innerHTML=ALL_NUTRIENTS.map(n=>`
-    <div class="goal-row" style="margin-bottom:6px">
-      <div class="goal-info"><div class="gl">${n.label}</div></div>
-      <input type="checkbox" ${nutrientToggles[n.key]?'checked':''} onchange="setNutrientToggle('${n.key}',this.checked)" style="width:20px;height:20px;cursor:pointer">
-    </div>`).join('');
+  // Only show the optional/non-primary nutrients as toggles (cal/prot are always on)
+  const optional=ALL_NUTRIENTS.filter(n=>!['cal','prot'].includes(n.key));
+  el.innerHTML=optional.map(n=>{
+    const on=nutrientToggles[n.key];
+    return `<div onclick="setNutrientToggle('${n.key}',${!on})" style="padding:6px 12px;border-radius:100px;border:1px solid ${on?'var(--lime)':'var(--border)'};background:${on?'rgba(212,245,60,.12)':'var(--s1)'};font-size:11px;color:${on?'var(--lime)':'var(--muted)'};cursor:pointer;font-family:'Archivo',sans-serif;font-weight:600;white-space:nowrap;transition:all .2s">${on?'✓ ':''}${n.label}</div>`;
+  }).join('');
 }
-function setNutrientToggle(key,val){nutrientToggles[key]=val;S('fl_ntoggles',nutrientToggles);renderNutrientToggles();}
+function setNutrientToggle(key,val){nutrientToggles[key]=val;S('fl_ntoggles',nutrientToggles);renderNutrientToggles();renderMicroRow(totals(entries),goals);}
 
 // ══ APP TOGGLES ══
 function saveToggles(){
@@ -1758,14 +1890,14 @@ function applyToggles(){
 // ══ WATER ══
 function logWater(oz){
   dailyWater=Math.max(0,dailyWater+oz);
-  S('fl_water_'+new Date().toDateString(),dailyWater);
+  S('fl_water_'+getActiveDayKey(),dailyWater);
   const el=document.getElementById('water-val');if(el)el.textContent=dailyWater+' oz';
 }
 
 // ══ BURN / NET ══
 function saveBurn(){
   burnKcal=+document.getElementById('burn-inp').value||0;
-  S('fl_burn_'+new Date().toDateString(),burnKcal);
+  S('fl_burn_'+getActiveDayKey(),burnKcal);
   updateNetDisplay();
 }
 function updateNetDisplay(){
@@ -1780,7 +1912,7 @@ function updateNetDisplay(){
 // ══ NOTES ══
 function saveNotes(){
   dailyNotes=document.getElementById('daily-notes').value;
-  S('fl_notes_'+new Date().toDateString(),dailyNotes);
+  S('fl_notes_'+getActiveDayKey(),dailyNotes);
 }
 
 // ══ STREAKS ══
@@ -1850,7 +1982,7 @@ function acceptQuestion(){
   if(!questionPendingMacros)return;
   const e=entries.find(x=>x.id===questionEntryId);if(!e)return;
   Object.assign(e,questionPendingMacros);
-  S('fl_e_'+todayKey,entries);render();
+  S('fl_e_'+getActiveDayKey(),entries);render();
   closeOverlay('overlay-question');
   toast('Entry updated');
 }
@@ -2081,205 +2213,293 @@ Use USDA FoodData Central values. vita=Vitamin A % DV. No markdown, just the JSO
   btn.disabled=false;btn.textContent='LOG';
 }
 
-function clearToday(){if(!confirm('Clear today?'))return;entries=[];S('fl_e_'+todayKey,entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Day cleared')}
+
+// ══ MICRO ROW — all toggled nutrients except cal/prot/carbs/fat ══
+function renderMicroRow(t, g){
+  const el=document.getElementById('micro-row');if(!el)return;
+
+  // All possible micro nutrients with their config
+  const MICROS=[
+    {key:'fiber', label:'Fiber',  unit:'g',  color:'var(--purple)', val:()=>Math.round((t||totals(entries)).fiber*10)/10, goal:()=>g.fiber||25},
+    {key:'vita',  label:'Vit A',  unit:'%',  color:'var(--orange)', val:()=>Math.round((t||totals(entries)).vita),         goal:()=>g.vita||100},
+    {key:'sugar', label:'Sugar',  unit:'g',  color:'var(--red)',    val:()=>Math.round((t||totals(entries)).sugar*10)/10,  goal:()=>goals.sugar||40},
+    {key:'sodium',label:'Sodium', unit:'mg', color:'var(--blue)',   val:()=>Math.round((t||totals(entries)).sodium),       goal:()=>goals.sodium||2300},
+    {key:'iron',  label:'Iron',   unit:'mg', color:'var(--purple)', val:()=>Math.round((t||totals(entries)).iron*10)/10,   goal:()=>goals.iron||18},
+  ];
+
+  // Only show ones the user has toggled on
+  const active=MICROS.filter(m=>nutrientToggles[m.key]!==false);
+
+  if(!active.length){el.innerHTML='';return;}
+
+  el.innerHTML=active.map(m=>{
+    const v=m.val();
+    const gv=m.goal();
+    const pct=Math.min((v/gv)*100,100)||0;
+    const over=v>gv;
+    const overAmt=over?` <span style="color:var(--red)">+${Math.round((v-gv)*10)/10}</span>`:'';
+    return `<div class="micro-item" style="--c:${m.color}">
+      <span class="micro-lbl">${m.label}</span>
+      <div class="micro-bar-wrap"><div class="micro-fill" style="width:${pct}%;background:${over?'var(--red)':m.color}"></div></div>
+      <span class="micro-val" style="color:${over?'var(--red)':'var(--text)'}">${v}<span style="color:var(--muted)">/${gv}${m.unit}</span>${overAmt}</span>
+    </div>`;
+  }).join('');
+}
+
+
+function selectAllSupps(){
+  const active=supplements.filter(s=>s.active);
+  const allChecked=active.every(s=>suppChecks[s.id]);
+  // If all checked, uncheck all — otherwise check all
+  active.forEach(s=>{
+    const wasChecked=suppChecks[s.id]||false;
+    const shouldCheck=!allChecked;
+    if(wasChecked===shouldCheck)return; // no change needed
+    suppChecks[s.id]=shouldCheck;
+    if(shouldCheck){
+      // Log it
+      const srv=s.serving!=null?s.serving:1;
+      const qty=s.hasQty?(parseFloat(document.getElementById('sqty-'+s.id)?.value)||1):1;
+      if(s.hasQty)suppChecks[s.id+'_qty']=qty;
+      const mul=srv*qty;
+      addEntry({id:Date.now()+Math.random(),name:s.name+(srv!==1?` (${srv} srv)`:''),cal:Math.round((s.cal||0)*mul),prot:Math.round((s.prot||0)*mul*10)/10,carbs:Math.round((s.carbs||0)*mul*10)/10,fat:Math.round((s.fat||0)*mul*10)/10,fiber:Math.round((s.fiber||0)*mul*10)/10,vita:Math.round((s.vita||0)*mul),iron:Math.round((s.iron||0)*mul*10)/10,sodium:Math.round((s.sodium||0)*mul),sugar:0,slot:'breakfast',src:'supplement',time:nowTime(),conf:'high',note:''});
+    }else{
+      // Remove last matching supplement entry
+      const idx=entries.map(e=>e.src).lastIndexOf('supplement');
+      if(idx>-1&&entries[idx].name.startsWith(s.name)){entries.splice(idx,1);S('fl_e_'+getActiveDayKey(),entries);}
+    }
+  });
+  S('fl_supp_'+getActiveDayKey(),suppChecks);
+  render();renderSupps();
+  toast(allChecked?'All cleared':'All logged!');
+}
+
+
+// ══ MEAL SECTION COLLAPSE ══
+let mealCollapsed=J('fl_meal_collapsed',{});
+function toggleMealSection(slot){
+  mealCollapsed[slot]=!mealCollapsed[slot];
+  S('fl_meal_collapsed',mealCollapsed);
+  renderEntries();
+}
+
+// ══ SUPPLEMENT HISTORY ══
+let suppHistRange=7;
+let suppHistVisible=false;
+
+function toggleSuppHistory(){
+  suppHistVisible=!suppHistVisible;
+  const el=document.getElementById('supp-history');
+  const btn=document.getElementById('supp-hist-toggle-btn');
+  if(el)el.style.display=suppHistVisible?'block':'none';
+  if(btn)btn.style.color=suppHistVisible?'var(--lime)':'';
+  if(suppHistVisible)renderSuppHistory();
+}
+
+function setSuppHistRange(days,btn){
+  suppHistRange=days;
+  document.querySelectorAll('.supp-hist-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSuppHistory();
+}
+
+function renderSuppHistory(){
+  const grid=document.getElementById('supp-hist-grid');if(!grid)return;
+  const active=supplements.filter(s=>s.active);
+  if(!active.length){grid.innerHTML='<div style="font-size:11px;color:var(--muted)">No supplements to show.</div>';return;}
+
+  const today=new Date();
+  const days=suppHistRange;
+
+  // Build date array from oldest to newest
+  const dates=[];
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    dates.push(d);
+  }
+
+  // Column header labels — show every Nth date depending on range
+  const labelInterval=days<=7?1:days<=30?5:days<=90?10:30;
+
+  let tableHtml=`<table class="supp-hist-table"><thead><tr><th></th>`;
+  dates.forEach((d,i)=>{
+    if(i%labelInterval===0||i===dates.length-1){
+      tableHtml+=`<th>${d.getMonth()+1}/${d.getDate()}</th>`;
+    }else{
+      tableHtml+=`<th></th>`;
+    }
+  });
+  tableHtml+=`</tr></thead><tbody>`;
+
+  active.forEach(s=>{
+    tableHtml+=`<tr><td class="supp-hist-name" title="${s.name}">${s.name.length>12?s.name.slice(0,11)+'…':s.name}</td>`;
+    dates.forEach(d=>{
+      const key='fl_supp_'+d.toDateString();
+      const dayChecks=J(key,{});
+      const isFuture=d>today;
+      const taken=!isFuture&&!!dayChecks[s.id];
+      const cls=isFuture?'future':taken?'taken':'missed';
+      const label=isFuture?'':taken?'✓':'';
+      tableHtml+=`<td><div class="supp-hist-dot ${cls}" title="${d.toDateString()}: ${taken?'taken':'missed'}">${label}</div></td>`;
+    });
+    tableHtml+=`</tr>`;
+  });
+
+  tableHtml+=`</tbody></table>`;
+  grid.innerHTML=tableHtml;
+}
+
+
+// ══ DAY NAVIGATION ══
+function shiftActiveDay(dir){
+  if(dir>0 && activeDayOffset>=7) return; // max 7 days ahead
+  activeDayOffset+=dir;
+  reloadActiveDay();
+}
+
+function jumpToToday(){
+  if(activeDayOffset===0) return;
+  activeDayOffset=0;
+  reloadActiveDay();
+}
+
+function reloadActiveDay(){
+  const key=getActiveDayKey();
+  // Reload all per-day state
+  entries=J('fl_e_'+key,[]);
+  suppChecks=J('fl_supp_'+key,{});
+  dailyWater=J('fl_water_'+key,0);
+  burnKcal=J('fl_burn_'+key,0);
+  dailyNotes=J('fl_notes_'+key,'');
+
+  // Update notes field
+  const nEl=document.getElementById('daily-notes');if(nEl)nEl.value=dailyNotes;
+  const bEl=document.getElementById('burn-inp');if(bEl){bEl.value=burnKcal||'';updateNetDisplay();}
+
+  updateDayHeader();
+  renderSlots();
+  render();
+  renderSupps();
+}
+
+function updateDayHeader(){
+  const key=getActiveDayKey();
+  const d=new Date(key);
+  const isToday=activeDayOffset===0;
+  const isYesterday=activeDayOffset===-1;
+  const isTomorrow=activeDayOffset===1;
+  let label='';
+  if(isToday) label='Today · '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  else if(isYesterday) label='Yesterday · '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  else if(isTomorrow) label='Tomorrow · '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  else label=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+  const el=document.getElementById('today-date-sub');
+  if(el){
+    el.textContent=label;
+    el.style.color=isToday?'var(--muted)':'var(--lime)';
+    el.title=isToday?'':'Tap to return to today';
+  }
+  // Disable next arrow when on today
+  const nextBtn=document.getElementById('day-next-btn');
+  if(nextBtn)nextBtn.style.opacity=activeDayOffset>=7?'.25':'1';
+}
+
+
+// ══ SUPPLEMENT BARCODE SCANNER ══
+let suppScannerOn=false;
+let suppCodeReader=null;
+
+function openSuppScan(){
+  const wrap=document.getElementById('supp-scan-wrap');
+  if(suppScannerOn){
+    stopSuppScan();
+    wrap.classList.remove('open');
+    suppScannerOn=false;
+  }else{
+    wrap.classList.add('open');
+    suppScannerOn=true;
+    startSuppScan();
+  }
+}
+
+async function startSuppScan(){
+  try{
+    suppCodeReader=new ZXing.BrowserBarcodeReader();
+    document.getElementById('supp-scan-status').textContent='Starting camera...';
+    await suppCodeReader.decodeFromVideoDevice(null,'supp-scan-video',async(res)=>{
+      if(res){
+        const code=res.text;
+        stopSuppScan();
+        document.getElementById('supp-scan-wrap').classList.remove('open');
+        suppScannerOn=false;
+        await lookupSuppBarcode(code);
+      }
+    });
+    document.getElementById('supp-scan-status').textContent='Point camera at supplement barcode';
+  }catch(e){
+    document.getElementById('supp-scan-status').textContent='Camera error: '+e.message;
+  }
+}
+
+function stopSuppScan(){
+  if(suppCodeReader){suppCodeReader.reset();suppCodeReader=null;}
+}
+
+async function lookupSuppBarcode(code){
+  toast('Looking up supplement...');
+  try{
+    const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+    const data=await res.json();
+    if(data.status===1&&data.product&&data.product.product_name){
+      const p=data.product;
+      const n=p.nutriments||{};
+      const srvG=parseFloat(p.serving_size)||100;
+      const ratio=srvG/100;
+
+      // Map to supplement fields
+      const newSupp={
+        id:'supp_scan_'+Date.now(),
+        name:p.product_name+(p.brands?` (${p.brands})`:''),
+        cal:Math.round((n['energy-kcal_100g']||0)*ratio),
+        prot:Math.round((n.proteins_100g||0)*ratio*10)/10,
+        carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,
+        fat:Math.round((n.fat_100g||0)*ratio*10)/10,
+        fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,
+        vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),
+        iron:Math.round((n['iron_value']||n['iron_100g']||0)*ratio*10)/10,
+        sodium:Math.round((n.sodium_100g||0)*ratio*1000), // convert g to mg
+        sugar:Math.round((n.sugars_100g||0)*ratio*10)/10,
+        active:true,
+        note:`${p.serving_size||'1 serving'} · scanned`
+      };
+
+      // Ask user to confirm
+      if(confirm(`Add "${newSupp.name}"?
+${newSupp.cal} cal · ${newSupp.iron}mg iron · ${newSupp.sodium}mg sodium`)){
+        supplements.push(newSupp);
+        S('fl_supps',supplements);
+        renderSuppManager();
+        renderSupps();
+        toast('Supplement added!');
+      }
+    }else{
+      // Not in database — pre-fill name field with barcode
+      toast('Not found — enter name manually');
+      const nameEl=document.getElementById('modal-supp-name');
+      if(nameEl)nameEl.value=code;
+    }
+  }catch(e){
+    toast('Scan lookup failed — try manually');
+  }
+}
+
+function clearToday(){const label=activeDayOffset===0?'today':new Date(getActiveDayKey()).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!confirm('Clear '+label+'?'))return;entries=[];S('fl_e_'+getActiveDayKey(),entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Cleared')}
 
 // Close search on outside tap
 document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))closeSearchResults()});
 
-// ── WEEK OFFSET ──
-let weekOffset=0;
-function shiftWeek(dir){
-  if(dir===0){weekOffset=0;}
-  else{weekOffset+=dir;}
-  const nextBtn=document.getElementById('week-next-btn');
-  if(nextBtn)nextBtn.style.opacity=weekOffset>=0?'.3':'1';
-  if(weekOffset>0)weekOffset=0;
-  buildWeek();
-}
 
-// Patch buildWeek to support weekOffset
-const _origBuildWeek=buildWeek;
-buildWeek=function(){
-  const offsetMs=weekOffset*7*24*60*60*1000;
-  const now=new Date(Date.now()+offsetMs);
-  const start=new Date(now);start.setDate(start.getDate()-start.getDay());start.setHours(0,0,0,0);
-  const today=new Date().toDateString();
-  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const end=new Date(start);end.setDate(end.getDate()+6);
-  document.getElementById('week-range-sub').textContent=start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-US',{month:'short',day:'numeric'})+(weekOffset<0?' (past)':'');
-  let rows=`<div class="ws-header"><div>Day</div><div>Eaten</div><div>Goal</div><div>Deficit</div></div>`;
-  let weekCal=0,weekDef=0,weekProt=0,days2=0;
-  for(let i=0;i<7;i++){
-    const d=new Date(start);d.setDate(d.getDate()+i);
-    const future=d>new Date()&&weekOffset===0;const isToday=d.toDateString()===today;
-    const dayE=J('fl_e_'+d.toDateString(),[]);const t=totals(dayE);
-    if(future&&!dayE.length){rows+=`<div class="ws-row"><div class="ws-day">${days[i]}</div><div class="ws-cal" style="color:var(--muted2)">—</div><div class="ws-cal">${goals.cal}</div><div class="ws-def neutral">—</div></div>`;continue;}
-    const def=goals.cal-t.cal;weekCal+=t.cal;weekDef+=def;weekProt+=t.prot;if(t.cal>0||isToday)days2++;
-    rows+=`<div class="ws-row${isToday?' today':''}"><div class="ws-day${isToday?' today-lbl':''}">${days[i]}</div><div class="ws-cal">${Math.round(t.cal)}</div><div class="ws-cal">${goals.cal}</div><div class="ws-def ${def>50?'pos':def<-50?'neg':'neutral'}">${t.cal>0||isToday?(def>=0?'+':'')+Math.round(def):'—'}</div></div>`;
-  }
-  document.getElementById('week-table').innerHTML=rows;
-  const lb=(weekDef/3500).toFixed(2);
-  document.getElementById('week-totals-card').innerHTML=`<div class="wt-row"><div class="wt-label">Weekly Deficit</div><div class="wt-val ${weekDef>0?'good':'over'}">${weekDef>=0?'+':''}${Math.round(weekDef)} kcal</div></div><div class="wt-row"><div class="wt-label">Fat Loss Pace</div><div class="wt-val ${+lb>0?'good':'over'}">${lb} lbs this week</div></div><div class="wt-row"><div class="wt-label">Avg Daily Calories</div><div class="wt-val">${days2?Math.round(weekCal/days2):'—'} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Protein</div><div class="wt-val" style="color:var(--blue)">${days2?Math.round(weekProt/days2):0}g</div></div><div class="wt-note">Green = deficit (banking calories). Red = surplus. ~3,500 kcal deficit ≈ 1 lb fat.</div>`;
-};
-
-// ── SUPPLEMENTS ──
-const SUPPS={
-  morning:[
-    {id:'seed',name:'Seed Probiotic',meta:'Daily · 0 cal',cal:0},
-    {id:'fishoil',name:'Fish Oil',meta:'Daily · ~10 cal',cal:10,fat:1},
-    {id:'iron',name:'Iron',meta:'Every other day · 0 cal',cal:0,iron:18,alt:true},
-    {id:'creatine',name:'Creatine',meta:'Daily · 0 cal',cal:0},
-    {id:'vitc',name:'Vitamin C',meta:'Daily · 0 cal',cal:0}
-  ],
-  preworkout:[
-    {id:'preworkout',name:'Nutricost Xtrem',meta:'½–¾ scoop · ~3 cal',cal:3,carbs:1}
-  ],
-  night:[
-    {id:'vitd',name:'Vitamin D',meta:'Nightly · 0 cal',cal:0},
-    {id:'zinc',name:'Zinc',meta:'Nightly · 0 cal',cal:0}
-  ]
-};
-
-let suppState=J('fl_supp_'+todayKey,{});
-let ironDayState=J('fl_iron_day',{lastTaken:'',count:0});
-
-function getSuppCardHtml(supp,slot){
-  const done=!!suppState[supp.id];
-  const isIronAlt=supp.alt;
-  // determine if iron is due today
-  let ironDue=true;
-  if(isIronAlt){
-    const last=ironDayState.lastTaken;
-    if(last){
-      const lastD=new Date(last);const todayD=new Date();
-      const diffDays=Math.floor((todayD-lastD)/(1000*60*60*24));
-      ironDue=diffDays>=2;// every other day = 2 days gap
-    }
-  }
-  const skipIron=isIronAlt&&!ironDue&&!done;
-  return `<div class="supp-card${done?' done':''}" id="supp-card-${supp.id}">
-    <div class="supp-info">
-      <div class="supp-name">${supp.name}</div>
-      <div class="supp-meta">${supp.meta}${isIronAlt?` · <span id="iron-due-lbl" style="color:${ironDue?'var(--lime)':'var(--muted)'}">${ironDue?'Due today':'Not due yet'}</span>`:''}${skipIron?' · <span style="color:var(--muted)">skip today</span>':''}</div>
-    </div>
-    <button class="supp-check${done?' checked':''}" onclick="toggleSupp('${supp.id}')" id="supp-btn-${supp.id}">${done?'✓':''}</button>
-  </div>`;
-}
-
-function renderSupps(){
-  ['morning','preworkout','night'].forEach(slot=>{
-    const el=document.getElementById('supp-'+slot);
-    if(!el)return;
-    el.innerHTML=SUPPS[slot].map(s=>getSuppCardHtml(s,slot)).join('');
-  });
-}
-
-function toggleSupp(id){
-  const supp=[...SUPPS.morning,...SUPPS.preworkout,...SUPPS.night].find(s=>s.id===id);
-  if(!supp)return;
-  const wasDone=!!suppState[id];
-  suppState[id]=!wasDone;
-  S('fl_supp_'+todayKey,suppState);
-  // iron every-other-day tracking
-  if(id==='iron'&&!wasDone){
-    ironDayState={lastTaken:new Date().toISOString(),count:(ironDayState.count||0)+1};
-    S('fl_iron_day',ironDayState);
-  }
-  renderSupps();
-}
-
-function toggleSuppSection(){
-  const body=document.getElementById('supp-body');
-  const btn=document.getElementById('supp-collapse-btn');
-  const hidden=body.style.display==='none';
-  body.style.display=hidden?'':'none';
-  btn.textContent=hidden?'Hide':'Show';
-}
-
-renderSupps();
-
-// ── BULK RECIPE IMPORT ──
-function bulkImportRecipes(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    try{
-      let arr=JSON.parse(ev.target.result);
-      if(!Array.isArray(arr)){toast('Expected a JSON array of recipes');return;}
-      const existingNames=new Set(recipes.map(r=>r.name.toLowerCase()));
-      let added=0;
-      arr.forEach(r=>{
-        if(!r.name||!r.servings)return;
-        if(existingNames.has(r.name.toLowerCase()))return;
-        recipes.push({
-          id:Date.now()+Math.random(),
-          name:r.name,servings:r.servings,
-          notes:r.notes||'',
-          cal:r.cal||0,prot:r.prot||0,carbs:r.carbs||0,
-          fat:r.fat||0,fiber:r.fiber||0,vita:r.vita||0,
-          sugar:r.sugar||0,sodium:r.sodium||0,iron:r.iron||0,
-          course:r.course||'none',cats:r.cats||[],
-          photo:null,favorite:false,created:Date.now()
-        });
-        existingNames.add(r.name.toLowerCase());
-        added++;
-      });
-      S('fl_recipes',recipes);renderRecipes();
-      toast(`Imported ${added} recipe${added!==1?'s':''}${arr.length-added>0?' ('+( arr.length-added)+' skipped, already exist)':''}`);
-    }catch{toast('Invalid JSON — check format');}
-  };
-  reader.readAsText(file);
-  e.target.value='';
-}
-
-// ── PATCH render() for sugar/sodium/iron ──
-const _origRender=render;
-render=function(){
-  _origRender();
-  const t=totals(entries);const g=goals;
-  const sg=g.sugar||40,sog=g.sodium||2300,ig=g.iron||100;
-  setRing('sugar',Math.round(t.sugar*10)/10||0,sg,'g','g left','g over');
-  setRing('sodium',Math.round(t.sodium)||0,sog,'mg','mg left','mg over');
-  setRing('iron',Math.round(t.iron)||0,ig,'%','% left','% over');
-  document.getElementById('r-sugar-g').textContent=sg;
-  document.getElementById('r-sodium-g').textContent=sog;
-  document.getElementById('r-iron-g').textContent=ig;
-};
-
-// ── PATCH saveGoals() for new nutrients ──
-const _origSaveGoals=saveGoals;
-saveGoals=function(){
-  _origSaveGoals();
-  goals.sugar=+document.getElementById('g-sugar')?.value||40;
-  goals.sodium=+document.getElementById('g-sodium')?.value||2300;
-  goals.iron=+document.getElementById('g-iron')?.value||100;
-  S('fl_goals',goals);
-  render();
-};
-
-// ── PATCH loadGoalsForm() for new nutrients ──
-const _origLoadGoals=loadGoalsForm;
-loadGoalsForm=function(){
-  _origLoadGoals();
-  const f=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v};
-  f('g-sugar',goals.sugar||40);
-  f('g-sodium',goals.sodium||2300);
-  f('g-iron',goals.iron||100);
-};
-loadGoalsForm();
-
-// ── PATCH totals() to include sugar/sodium/iron ──
-const _origTotals=totals;
-totals=function(arr){
-  const base=_origTotals(arr);
-  base.sugar=arr.reduce((a,e)=>a+(e.sugar||0),0);
-  base.sodium=arr.reduce((a,e)=>a+(e.sodium||0),0);
-  base.iron=arr.reduce((a,e)=>a+(e.iron||0),0);
-  return base;
-};
-
-// Re-render to pick up patched functions
-render();
 </script>
 </body>
 </html>
