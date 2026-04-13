@@ -840,7 +840,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="modal-handle"></div>
     <div class="modal-title">Bulk Import Recipes</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5">Paste a JSON array of recipes from your meal prep chat. Duplicates (by name) are skipped automatically.</div>
-    <div class="field-lbl">JSON Array</div>
+     <div style="display:flex;gap:8px;margin-bottom:8px">
+       <button class="btn-sm" onclick="document.getElementById('bulk-file-input').click()" style="flex:1;padding:9px;border-radius:9px;font-size:12px">📁 Upload JSON File</button>
+       <input type="file" id="bulk-file-input" accept=".json,application/json,text/plain" style="display:none" onchange="loadBulkFile(this)">
+     </div>
+     <div class="field-lbl">JSON Array</div>
     <textarea class="bulk-ta" id="bulk-json-ta" 
       placeholder='[{"name":"Chicken Bowls","servings":8,"calories":2800,"protein":320,"carbs":240,"fat":60,"servings":8}]'
       oninput="document.getElementById('bulk-char-count').textContent=this.value.length+' chars pasted'"
@@ -2885,6 +2889,18 @@ function quickLogRecipe(id){
   document.getElementById('food-ta').value='';
   // Open the log recipe modal
   openLogRecipe(id);
+}
+
+function loadBulkFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('bulk-json-ta').value=e.target.result;
+    document.getElementById('bulk-result').textContent='File loaded — tap Import Recipes';
+    document.getElementById('bulk-result').style.color='var(--lime)';
+  };
+  reader.readAsText(file);
+  input.value='';
 }
 function clearToday(){const label=activeDayOffset===0?'today':new Date(getActiveDayKey()).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!confirm('Clear '+label+'?'))return;entries=[];S('fl_e_'+getActiveDayKey(),entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Cleared')}
 
