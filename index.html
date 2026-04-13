@@ -1523,6 +1523,7 @@ function saveRecipe(){
 // ── RECIPE VIEWS & FILTERS ──
 function setRecipeView(view,btn){
   recipeView=view;recipeFilter='all';recipeDrilldown=null;
+  const chips=document.getElementById('recipe-filter-chips');if(chips)chips.style.display='none';
   document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   renderRecipeFilterChips();renderRecipes();
@@ -1530,6 +1531,12 @@ function setRecipeView(view,btn){
 
 function renderRecipeFilterChips(){
   const el=document.getElementById('recipe-filter-chips');
+  // Hide chips completely when showing grid (course/category without drilldown)
+  if((recipeView==='course'||recipeView==='category')&&!recipeDrilldown){
+    if(el)el.style.display='none';
+    return;
+  }
+  if(el)el.style.display='flex';
   let chips='<div class="fchip '+(recipeFilter==='all'?'active':'')+'" onclick="setRecipeFilter(\'all\')">All</div>';
   if(recipeView==='course'){
     COURSES.forEach(c=>{
@@ -1626,7 +1633,13 @@ function renderRecipes(){
   }).join('');
 }
 
-function drillRecipes(type,key,label){recipeDrilldown={type,key,label};renderRecipes();}
+function drillRecipes(type,key,label){
+  recipeDrilldown={type,key,label};
+  recipeFilter='all';
+  const chips=document.getElementById('recipe-filter-chips');
+  if(chips)chips.style.display='flex';
+  renderRecipes();
+}
 
 
 function toggleFav(id){
