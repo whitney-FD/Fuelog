@@ -2181,7 +2181,7 @@ function doBulkImport(){
       const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0);
       const _notes=r.notes||r.ingredients||r.description||'';
       let _course=r.course||'none';
-      if(Array.isArray(_course)){const map={breakfast:'breakfast',lunch:'main',dinner:'main',main:'main',snack:'snack',side:'side',dessert:'dessert'};_course=_course.map(c=>map[String(c).toLowerCase()]).find(Boolean)||'main';}
+      if(Array.isArray(_course)){_course=_course[0]||'none';} _course=String(_course).toLowerCase(); if(!['breakfast','main','side','snack','dessert','none'].includes(_course))_course='main';
       const _cats=[...new Set([...(r.cats||[]),...(r.tags||[]),...(r.categories||[])].map(c=>String(c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
       recipes.push({id:Date.now()+Math.random(),name:r.name,servings:+(r.servings||1),notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(+(r.vita||r.vitamin_a||0)),iron:Math.round(+(r.iron||0)*10)/10,sodium:Math.round(+(r.sodium||0)),sugar:Math.round(+(r.sugar||0)*10)/10,course:_course,cats:_cats,photo:null,favorite:false,baseId:null,created:Date.now()});
       existingNames.add(r.name.toLowerCase());
