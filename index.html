@@ -275,6 +275,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .meal-section-body.hidden{display:none}
 .meal-empty{font-size:12px;color:var(--muted2);padding:6px 0 4px;font-style:italic}
 
+
+/* BULK DELETE */
+.recipe-select-cb{position:absolute;top:10px;right:10px;width:20px;height:20px;cursor:pointer;accent-color:var(--lime);display:none;z-index:10}
+.recipe-card.select-mode .recipe-select-cb{display:block}
+.recipe-card.select-mode{cursor:pointer}
+.recipe-card.selected-card{border-color:var(--lime);background:rgba(212,245,60,.04)}
+.bulk-bar{display:none;position:sticky;bottom:72px;left:16px;right:16px;margin:0 16px 8px;background:var(--s2);border:1px solid var(--lime);border-radius:12px;padding:10px 14px;flex-direction:row;justify-content:space-between;align-items:center;z-index:50;backdrop-filter:blur(8px)}
+.bulk-bar.show{display:flex}
+
 /* SUPP HISTORY */
 .supp-history{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .supp-hist-controls{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
@@ -503,8 +512,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div style="display:flex;gap:8px">
       <button class="btn-log" style="flex:1;padding:12px;border-radius:12px;font-size:14px" onclick="openNewRecipeModal()">+ New Recipe</button>
       <button class="btn-log" style="padding:12px 14px;border-radius:12px;font-size:14px;background:var(--s2);color:var(--text);border:1px solid var(--border)" onclick="openBulkImport()">⬆ Bulk</button>
+      <button class="btn-log" id="recipe-select-btn" style="padding:12px 14px;border-radius:12px;font-size:14px;background:var(--s2);color:var(--muted);border:1px solid var(--border)" onclick="toggleRecipeSelectMode()">Select</button>
     </div>
-    <input type="file" id="bulk-recipe-input" accept=".json" style="display:none" onchange="bulkImportRecipes(event)">
+    <div id="recipe-select-bar" style="display:none;padding:8px 0 4px;gap:8px;align-items:center;justify-content:space-between">
+      <span id="recipe-select-count" style="font-size:12px;color:var(--muted)">0 selected</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" onclick="selectAllRecipesForDelete()">All</button>
+        <button class="btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteSelectedRecipes()">🗑 Delete</button>
+        <button class="btn-sm" onclick="toggleRecipeSelectMode()">Cancel</button>
+      </div>
+    </div>
   </div>
   <div style="height:10px"></div>
   <div class="recipe-filters">
@@ -649,7 +666,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="tag-opt" onclick="selectCourse(this,'none')">No Course</div>
     </div>
 
-    <div class="field-lbl">Category (pick all that apply)</div>
+    <div class="field-lbl">Category (pick all that apply + add your own)</div>
     <div class="tag-grid" id="rm-cat-tags">
       <div class="tag-opt" onclick="toggleCat(this,'chicken')">Chicken</div>
       <div class="tag-opt" onclick="toggleCat(this,'egg')">Egg</div>
@@ -670,6 +687,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="tag-opt" onclick="toggleCat(this,'cookie')">Cookie</div>
       <div class="tag-opt" onclick="toggleCat(this,'tart')">Tart</div>
     </div>
+    <div style="display:flex;gap:8px;margin-top:4px" id="custom-cat-row">
+      <input type="text" id="custom-cat-input" placeholder="Add custom tag..." style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 11px;color:var(--text);font-family:'Archivo Narrow',sans-serif;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomCat()}" maxlength="30">
+      <button class="btn-sm" onclick="addCustomCat()">+ Add</button>
+    </div>
+    <div id="custom-cats-display" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div>
 
     <div class="field-lbl">Ingredients / Voice Entry</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -1526,7 +1548,7 @@ function renderRecipes(){
   el.innerHTML=rs.map(r=>{
     const s=r.servings;const base=r.baseId?recipes.find(x=>x.id===r.baseId):null;
     const allTags=[r.course&&r.course!=='none'?COURSE_LABELS[r.course]:null,...(r.cats||[]).map(c=>c.charAt(0).toUpperCase()+c.slice(1))].filter(Boolean);
-    return `<div class="recipe-card">
+    return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${selectedRecipeIds.has(r.id)?' selected-card':''}" data-rid="${r.id}" onclick="${recipeSelectMode?'toggleRecipeSelect('+r.id+',event)':''}">
       <div class="rc-head" id="rch-${r.id}" onclick="toggleRecipe(${r.id})">
         ${r.photo?`<img class="rc-img" src="${r.photo}">`:`<div class="rc-img-placeholder">🍽️</div>`}
         <div class="rc-info">
@@ -1534,6 +1556,7 @@ function renderRecipes(){
           <div class="rc-meta">${s} servings · ${Math.round(r.cal/s)} cal · ${Math.round(r.prot/s*10)/10}g P per serving${base?' · tweaked':''}</div>
           ${allTags.length?`<div class="rc-tags">${allTags.map(t=>`<span class="rc-tag">${t}</span>`).join('')}</div>`:''}
         </div>
+        ${recipeSelectMode?`<input type="checkbox" class="recipe-select-cb" ${selectedRecipeIds.has(r.id)?'checked':''} onclick="toggleRecipeSelect(${r.id},event)">`:''}
         <button class="rc-fav" onclick="event.stopPropagation();toggleFav(${r.id})">${r.favorite?'❤️':'🤍'}</button>
         <div class="rc-chevron" id="rchev-${r.id}">▼</div>
       </div>
@@ -2032,14 +2055,29 @@ function doBulkImport(){
     arr.forEach(r=>{
       if(!r.name){skipped++;return;}
       if(existingNames.has(r.name.toLowerCase())){skipped++;return;}
-      recipes.push({
-        id:Date.now()+Math.random(),
-         name:r.name,servings:r.servings||1,notes:r.notes||'',directions:r.directions||'',url:r.url||'',
-        cal:r.cal||0,prot:r.prot||0,carbs:r.carbs||0,fat:r.fat||0,
-        fiber:r.fiber||0,vita:r.vita||0,iron:r.iron||0,sodium:r.sodium||0,sugar:r.sugar||0,
-        course:r.course||'none',cats:r.cats||[],
-        photo:null,favorite:false,baseId:null,created:Date.now()
-      });
+       // Normalize alternate field names — handles calories/cal, protein/prot, tags/cats, course as array
+       const _cal=+(r.cal||r.calories||r.kcal||0);
+       const _prot=+(r.prot||r.protein||r.proteins||0);
+       const _carbs=+(r.carbs||r.carbohydrates||r.carb||0);
+       const _fat=+(r.fat||r.fats||r.lipids||0);
+       const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0);
+       const _notes=r.notes||r.ingredients||r.description||'';
+       // course: accept string OR array — map to single app value
+       let _course=r.course||'none';
+       if(Array.isArray(_course)){
+         const map={breakfast:'breakfast',lunch:'main',dinner:'main',main:'main',snack:'snack',side:'side',dessert:'dessert'};
+         _course=_course.map(c=>map[String(c).toLowerCase()]).find(Boolean)||'main';
+       }
+       // cats: merge cats + tags + categories, normalise slugs
+       const _cats=[...new Set([...(r.cats||[]),...(r.tags||[]),...(r.categories||[])].map(c=>String(c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
+       recipes.push({
+         id:Date.now()+Math.random(),
+         name:r.name,servings:r.servings||1,notes:_notes,directions:r.directions||'',url:r.url||'',
+         cal:_cal,prot:_prot,carbs:_carbs,fat:_fat,
+         fiber:_fiber,vita:+(r.vita||r.vitamin_a||0),iron:+(r.iron||0),sodium:+(r.sodium||0),sugar:+(r.sugar||0),
+         course:_course,cats:_cats,
+         photo:null,favorite:false,baseId:null,created:Date.now()
+       });
       existingNames.add(r.name.toLowerCase());
       added++;
     });
@@ -2578,6 +2616,93 @@ function updateRecipe(id){
   closeOverlay('overlay-recipe');
   renderRecipes();
   toast('Recipe updated!');
+}
+
+
+// ══ CUSTOM CATEGORIES ══
+let customCats=[];
+
+function addCustomCat(){
+  const inp=document.getElementById('custom-cat-input');
+  const val=(inp.value||'').trim().toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/ +/g,'-');
+  if(!val)return;
+  if(!rmSelectedCats.includes(val))rmSelectedCats.push(val);
+  if(!customCats.includes(val))customCats.push(val);
+  inp.value='';
+  renderCustomCats();
+}
+
+function renderCustomCats(){
+  const el=document.getElementById('custom-cats-display');if(!el)return;
+  el.innerHTML=customCats.map(c=>`
+    <div style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:100px;background:rgba(212,245,60,.15);border:1px solid var(--lime);font-size:11px;color:var(--lime);font-family:'Archivo',sans-serif;font-weight:600">
+      ${c}
+      <span onclick="removeCustomCat('${c}')" style="cursor:pointer;opacity:.6;margin-left:2px">×</span>
+    </div>`).join('');
+}
+
+function removeCustomCat(val){
+  customCats=customCats.filter(c=>c!==val);
+  rmSelectedCats=rmSelectedCats.filter(c=>c!==val);
+  renderCustomCats();
+}
+
+// ══ RECIPE SELECT MODE / BULK DELETE ══
+let recipeSelectMode=false;
+let selectedRecipeIds=new Set();
+
+function toggleRecipeSelectMode(){
+  recipeSelectMode=!recipeSelectMode;
+  selectedRecipeIds.clear();
+  const btn=document.getElementById('recipe-select-btn');
+  const bar=document.getElementById('recipe-select-bar');
+  if(btn){
+    btn.style.color=recipeSelectMode?'var(--lime)':'var(--muted)';
+    btn.style.borderColor=recipeSelectMode?'var(--lime)':'var(--border)';
+    btn.textContent=recipeSelectMode?'✓ Done':'Select';
+  }
+  if(bar)bar.style.display=recipeSelectMode?'flex':'none';
+  updateSelectCount();
+  renderRecipes();
+}
+
+function updateSelectCount(){
+  const el=document.getElementById('recipe-select-count');
+  if(el)el.textContent=selectedRecipeIds.size+' selected';
+}
+
+function toggleRecipeSelect(id,e){
+  if(e)e.stopPropagation();
+  // ids may be numbers or strings depending on source — normalise
+  const found=[...selectedRecipeIds].find(x=>String(x)===String(id));
+  if(found!==undefined)selectedRecipeIds.delete(found);
+  else selectedRecipeIds.add(id);
+  updateSelectCount();
+  renderRecipes();
+}
+
+function selectAllRecipesForDelete(){
+  const visible=getFilteredRecipes();
+  if(selectedRecipeIds.size===visible.length){
+    selectedRecipeIds.clear();
+  }else{
+    visible.forEach(r=>selectedRecipeIds.add(r.id));
+  }
+  updateSelectCount();
+  renderRecipes();
+}
+
+function deleteSelectedRecipes(){
+  if(!selectedRecipeIds.size){toast('Nothing selected');return;}
+  if(!confirm(`Delete ${selectedRecipeIds.size} recipe${selectedRecipeIds.size>1?'s':''}?`))return;
+  recipes=recipes.filter(r=>!selectedRecipeIds.has(r.id));
+  S('fl_recipes',recipes);
+  selectedRecipeIds.clear();
+  recipeSelectMode=false;
+  const btn=document.getElementById('recipe-select-btn');if(btn)btn.style.color='var(--muted)';
+  const bar=document.getElementById('recipe-select-bar');if(bar)bar.style.display='none';
+  renderRecipes();
+  toast('Deleted');
 }
 
 function clearToday(){const label=activeDayOffset===0?'today':new Date(getActiveDayKey()).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!confirm('Clear '+label+'?'))return;entries=[];S('fl_e_'+getActiveDayKey(),entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Cleared')}
