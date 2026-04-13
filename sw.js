@@ -1,4 +1,4 @@
-const CACHE = 'fuelog-v30';
+const CACHE = 'fuelog-v32';
 const ASSETS = [
   '/Fuelog/',
   '/Fuelog/index.html',
