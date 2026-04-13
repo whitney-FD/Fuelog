@@ -775,11 +775,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div style="font-size:14px;font-weight:700;margin-bottom:4px" id="lrs-name"></div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="lrs-meta"></div>
     <div id="lrs-macros" class="computed-macros" style="margin-bottom:16px"></div>
-    <div class="field-lbl">Number of Servings</div>
-    <input class="field-input" type="number" id="lrs-qty" value="1" min="0.25" step="0.25">
-    <div class="field-lbl">Meal Slot</div>
+    <div class="field-lbl">Servings</div>
+    <input class="field-input" type="number" id="lrs-qty" value="1" min="0.25" step="0.25" oninput="updateLrsPreview()">
+    <div id="lrs-preview" style="font-size:12px;color:var(--lime);margin:-4px 0 12px;text-align:right"></div>
+    <div class="field-lbl">Day</div>
+    <select class="field-input" id="lrs-day">
+      <option value="0">Today</option>
+      <option value="-1">Yesterday</option>
+      <option value="-2">2 days ago</option>
+      <option value="-3">3 days ago</option>
+      <option value="1">Tomorrow</option>
+      <option value="2">In 2 days</option>
+      <option value="3">In 3 days</option>
+    </select>
+    <div class="field-lbl">Meal</div>
     <select class="field-input" id="lrs-slot">
-      <option value="breakfast">🌅 Breakfast / First Meal</option>
+      <option value="breakfast">🌅 First Meal / Breakfast</option>
       <option value="lunch">☀️ Lunch</option>
       <option value="snack">🍎 Snack</option>
       <option value="dinner" selected>🌙 Dinner</option>
@@ -1061,6 +1072,9 @@ async function doSearch(q){
   const ql=q.toLowerCase();
   const res=document.getElementById('search-results');
 
+  // 0. Recipes matching query — show first
+  const matchedRecipes=recipes.filter(r=>r.name.toLowerCase().includes(ql)).slice(0,3);
+
   // 1. My saved foods
   const mine=foodLibrary.filter(f=>f.name.toLowerCase().includes(ql)).sort((a,b)=>(b.count||0)-(a.count||0)).slice(0,4);
 
@@ -1079,6 +1093,19 @@ async function doSearch(q){
   }catch{}
 
   let html='';
+
+  // Recipe results first
+  matchedRecipes.forEach(r=>{
+    const srv=r.servings;
+    html+=`<div class="sr-item" onclick="quickLogRecipe(${r.id})">
+      <div>
+        <div class="sr-name">${r.name}</div>
+        <div class="sr-meta">${Math.round(r.cal/srv)} cal · ${Math.round(r.prot/srv*10)/10}g P · ${srv} servings</div>
+      </div>
+      <span class="sr-badge" style="background:rgba(212,245,60,.15);color:var(--lime);border:1px solid var(--lime)">Recipe</span>
+    </div>`;
+  });
+
   mine.forEach(f=>{
     html+=`<div class="sr-item" onclick="logFromLibrary(${JSON.stringify(f).replace(/"/g,'&quot;')})">
       <div><div class="sr-name">${f.name}</div><div class="sr-meta">${Math.round(f.cal)} cal · ${f.prot}g P</div></div>
@@ -1655,9 +1682,14 @@ function toggleRecipe(id){
 function openLogRecipe(id){
   logRecipeId=id;const r=recipes.find(x=>x.id===id);if(!r)return;
   document.getElementById('lrs-name').textContent=r.name;
-  document.getElementById('lrs-meta').textContent=`${r.servings} servings total · ${Math.round(r.cal/r.servings)} cal per serving`;
+  document.getElementById('lrs-meta').textContent=`${r.servings} servings total · ${Math.round(r.cal/r.servings)} cal · ${Math.round(r.prot/r.servings*10)/10}g P per serving`;
   document.getElementById('lrs-macros').innerHTML=`<div class="cm-cell"><div class="cm-v">${Math.round(r.cal/r.servings)}</div><div class="cm-l">Cal</div></div><div class="cm-cell"><div class="cm-v" style="color:var(--blue)">${Math.round(r.prot/r.servings*10)/10}g</div><div class="cm-l">Protein</div></div><div class="cm-cell"><div class="cm-v" style="color:var(--yellow)">${Math.round(r.carbs/r.servings*10)/10}g</div><div class="cm-l">Carbs</div></div><div class="cm-cell"><div class="cm-v" style="color:var(--teal)">${Math.round(r.fat/r.servings*10)/10}g</div><div class="cm-l">Fat</div></div>`;
-  document.getElementById('lrs-qty').value=1;document.getElementById('lrs-slot').value=currentSlot();
+  document.getElementById('lrs-qty').value=1;
+  document.getElementById('lrs-slot').value=currentSlot();
+  // Default day picker to current active day
+  const dayEl=document.getElementById('lrs-day');
+  if(dayEl){dayEl.value=String(activeDayOffset||0);}
+  updateLrsPreview();
   openOverlay('overlay-log-recipe');
 }
 
@@ -1665,10 +1697,22 @@ function logRecipeServing(){
   const r=recipes.find(x=>x.id===logRecipeId);if(!r)return;
   const qty=+document.getElementById('lrs-qty').value||1;
   const slot=document.getElementById('lrs-slot').value;
+  // Get chosen day
+  const dayOffset=+document.getElementById('lrs-day')?.value||0;
+  const targetDate=new Date();targetDate.setDate(targetDate.getDate()+dayOffset);
+  const targetKey=targetDate.toDateString();
   const mul=qty/r.servings;
   const entry={id:Date.now(),name:r.name+(qty!==1?` (${qty} servings)`:''),cal:Math.round(r.cal*mul),prot:Math.round(r.prot*mul*10)/10,carbs:Math.round(r.carbs*mul*10)/10,fat:Math.round(r.fat*mul*10)/10,fiber:Math.round(r.fiber*mul*10)/10,vita:Math.round(r.vita*mul),serving:qty+' serving'+(qty!==1?'s':''),conf:'high',note:'',slot,src:'recipe',time:nowTime()};
-  addEntry(entry);addToLibrary(entry);
-  closeOverlay('overlay-log-recipe');openQuickNav('today');refreshCoach();toast('Logged: '+r.name);
+  addToLibrary(entry);
+  // Save to target day
+  const targetEntries=J('fl_e_'+targetKey,[]);
+  targetEntries.push(entry);
+  S('fl_e_'+targetKey,targetEntries);
+  if(targetKey===getActiveDayKey()){entries=[...targetEntries];render();}
+  closeOverlay('overlay-log-recipe');
+  const dayLabel=dayOffset===0?'today':dayOffset===-1?'yesterday':targetDate.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  toast('Logged to '+dayLabel+': '+r.name);
+  buildWeek();
 }
 
 function deleteRecipe(id){if(!confirm('Delete this recipe?'))return;recipes=recipes.filter(r=>r.id!==id);S('fl_recipes',recipes);renderRecipes()}
@@ -2804,6 +2848,22 @@ function getCategoryTileHtml(key,type){
   return `<div class="recipe-tile-bg" style="background:${color}">${emoji}</div>`;
 }
 
+
+function updateLrsPreview(){
+  const r=recipes.find(x=>x.id===logRecipeId);if(!r)return;
+  const qty=+document.getElementById('lrs-qty')?.value||1;
+  const mul=qty/r.servings;
+  const el=document.getElementById('lrs-preview');
+  if(el)el.textContent=`${Math.round(r.cal*mul)} cal · ${Math.round(r.prot*mul*10)/10}g P · ${Math.round(r.carbs*mul*10)/10}g C · ${Math.round(r.fat*mul*10)/10}g F`;
+}
+
+function quickLogRecipe(id){
+  // Close search results
+  closeSearchResults();
+  document.getElementById('food-ta').value='';
+  // Open the log recipe modal
+  openLogRecipe(id);
+}
 function clearToday(){const label=activeDayOffset===0?'today':new Date(getActiveDayKey()).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!confirm('Clear '+label+'?'))return;entries=[];S('fl_e_'+getActiveDayKey(),entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Cleared')}
 
 // Close search on outside tap
