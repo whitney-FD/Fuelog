@@ -161,6 +161,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .filter-chips::-webkit-scrollbar{display:none}
 .fchip{flex-shrink:0;padding:5px 12px;border-radius:100px;border:1px solid var(--border);background:var(--s1);font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Archivo',sans-serif;font-weight:600}
 .fchip.active{background:var(--lime);color:#000;border-color:var(--lime)}
+
+/* RECIPE GRID VIEW */
+.recipe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 16px}
+.recipe-tile{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;cursor:pointer;background:var(--s1)}
+.recipe-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.recipe-tile-bg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px}
+.recipe-tile-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.75));padding:20px 8px 7px;color:#fff}
+.recipe-tile-name{font-size:11px;font-weight:700;font-family:'Archivo',sans-serif;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recipe-tile-count{font-size:10px;opacity:.8;font-weight:500}
+.recipe-tile-select{position:absolute;top:6px;right:6px;width:20px;height:20px;accent-color:var(--lime)}
+
+/* RECIPE DETAIL LIST (when filtered to one category) */
+.recipe-detail-header{display:flex;align-items:center;gap:10px;padding:0 16px 12px}
+.recipe-detail-back{background:none;border:none;color:var(--lime);font-size:20px;cursor:pointer;padding:0;line-height:1}
+.recipe-detail-title{font-family:'Archivo',sans-serif;font-size:15px;font-weight:800;color:var(--text)}
+
 .recipe-card{margin:0 16px 10px;background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
 .rc-head{padding:13px 14px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;gap:10px}
 .rc-img{width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0}
@@ -872,6 +888,7 @@ let foodLibrary=J('fl_foods',[]);
 let goals=J('fl_goals',{cal:1600,prot:135,carbs:160,fat:58,fiber:25,vita:100,name:'',tdee:1950,t_breakfast:'12:00',t_lunch:'14:00',t_dinner:'19:00',apiKey:''});
 let activeSlot='all';
 let recipeView='course';
+let recipeDrilldown=null; // null = grid view, else {type,key,label}
 let recipeFilter='all';
 let scannerOn=false,codeReader=null;
 let tweakBaseId=null,logRecipeId=null,editEntryId=null;
@@ -1505,7 +1522,7 @@ function saveRecipe(){
 
 // ── RECIPE VIEWS & FILTERS ──
 function setRecipeView(view,btn){
-  recipeView=view;recipeFilter='all';
+  recipeView=view;recipeFilter='all';recipeDrilldown=null;
   document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   renderRecipeFilterChips();renderRecipes();
@@ -1540,24 +1557,50 @@ function getFilteredRecipes(){
 function renderRecipes(){
   renderRecipeFilterChips();
   const el=document.getElementById('recipes-list');
-  const rs=getFilteredRecipes();
-  if(!rs.length){
-    const msg=recipeView==='favorites'?'No favorites yet — tap ♡ on a recipe':'No recipes yet. Tap + New Recipe.';
-    el.innerHTML=`<div class="empty-state"><div class="es-icon">🧑‍🍳</div><div class="es-txt">${msg}</div></div>`;return;
+  if(!el)return;
+
+  // GRID VIEW: course or category tiles
+  if((recipeView==='course'||recipeView==='category')&&!recipeDrilldown){
+    const type=recipeView;
+    let groups=[];
+    if(type==='course'){
+      const cc={};recipes.forEach(r=>{const k=r.course||'none';cc[k]=(cc[k]||0)+1;});
+      groups=Object.entries(cc).sort((a,b)=>b[1]-a[1]).map(([k,cnt])=>({key:k,label:COURSE_LABELS[k]||k,cnt}));
+    }else{
+      const cc={};recipes.forEach(r=>(r.cats||[]).forEach(c=>{cc[c]=(cc[c]||0)+1;}));
+      groups=Object.entries(cc).sort((a,b)=>b[1]-a[1]).map(([k,cnt])=>({key:k,label:k.charAt(0).toUpperCase()+k.slice(1),cnt}));
+    }
+    if(!recipes.length){el.innerHTML='<div class="empty-state"><div class="es-icon">🧑‍🍳</div><div class="es-txt">No recipes yet.</div></div>';return;}
+    groups.unshift({key:'all',label:'All',cnt:recipes.length,isAll:true});
+    el.innerHTML='<div class="recipe-grid">'+groups.map(g=>{
+      const bg=g.isAll?`<div class="recipe-tile-bg" style="background:#222;font-size:36px">🍽️</div>`:getCategoryTileHtml(g.key,type);
+      return `<div class="recipe-tile" onclick="drillRecipes('${type}','${g.key}','${g.label}')">${bg}<div class="recipe-tile-overlay"><div class="recipe-tile-name">${g.label}</div><div class="recipe-tile-count">${g.cnt}</div></div></div>`;
+    }).join('')+'</div>';
+    return;
   }
-  el.innerHTML=rs.map(r=>{
-    const s=r.servings;const base=r.baseId?recipes.find(x=>x.id===r.baseId):null;
+
+  // DRILL-DOWN or flat views
+  let rs=[];
+  if(recipeDrilldown){
+    const {type,key}=recipeDrilldown;
+    rs=key==='all'?[...recipes]:type==='course'?recipes.filter(r=>r.course===key):recipes.filter(r=>(r.cats||[]).includes(key));
+    rs.sort((a,b)=>b.created-a.created);
+  }else{
+    rs=getFilteredRecipes();
+  }
+  const backBtn=recipeDrilldown?`<div class="recipe-detail-header"><button class="recipe-detail-back" onclick="recipeDrilldown=null;renderRecipes()">&#8249;</button><div class="recipe-detail-title">${recipeDrilldown.label} <span style="color:var(--muted);font-weight:400;font-size:12px">${rs.length}</span></div></div>`:'';
+  if(!rs.length){
+    const msg=recipeView==='favorites'?'No favorites yet':'No recipes yet.';
+    el.innerHTML=backBtn+`<div class="empty-state"><div class="es-icon">🧑‍🍳</div><div class="es-txt">${msg}</div></div>`;return;
+  }
+  el.innerHTML=backBtn+rs.map(r=>{
+    const s=r.servings;
     const allTags=[r.course&&r.course!=='none'?COURSE_LABELS[r.course]:null,...(r.cats||[]).map(c=>c.charAt(0).toUpperCase()+c.slice(1))].filter(Boolean);
-    return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${selectedRecipeIds.has(r.id)?' selected-card':''}" data-rid="${r.id}" onclick="${recipeSelectMode?'toggleRecipeSelect('+r.id+',event)':''}">
+    return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${selectedRecipeIds.has(r.id)?' selected-card':''}" data-rid="${r.id}" onclick="recipeSelectMode?toggleRecipeSelect(r.id,event):null">
       <div class="rc-head" id="rch-${r.id}" onclick="toggleRecipe(${r.id})">
         ${r.photo?`<img class="rc-img" src="${r.photo}">`:`<div class="rc-img-placeholder">🍽️</div>`}
-        <div class="rc-info">
-          <div class="rc-name">${r.name}</div>
-          <div class="rc-meta">${s} servings · ${Math.round(r.cal/s)} cal · ${Math.round(r.prot/s*10)/10}g P per serving${base?' · tweaked':''}</div>
-          ${allTags.length?`<div class="rc-tags">${allTags.map(t=>`<span class="rc-tag">${t}</span>`).join('')}</div>`:''}
-        </div>
-        ${recipeSelectMode?`<input type="checkbox" class="recipe-select-cb" ${selectedRecipeIds.has(r.id)?'checked':''} onclick="toggleRecipeSelect(${r.id},event)">`:''}
-        <button class="rc-fav" onclick="event.stopPropagation();toggleFav(${r.id})">${r.favorite?'❤️':'🤍'}</button>
+        <div class="rc-info"><div class="rc-name">${r.name}</div><div class="rc-meta">${s} srv · ${Math.round(r.cal/s)} cal · ${Math.round(r.prot/s*10)/10}g P</div>${allTags.length?`<div class="rc-tags">${allTags.map(t=>`<span class="rc-tag">${t}</span>`).join('')}</div>`:''}</div>
+        ${recipeSelectMode?`<input type="checkbox" class="recipe-select-cb" ${selectedRecipeIds.has(r.id)?'checked':''} onclick="toggleRecipeSelect(${r.id},event)">`:''}<button class="rc-fav" onclick="event.stopPropagation();toggleFav(${r.id})">${r.favorite?'❤️':'🤍'}</button>
         <div class="rc-chevron" id="rchev-${r.id}">▼</div>
       </div>
       <div class="rc-body" id="rcb-${r.id}">
@@ -1566,16 +1609,12 @@ function renderRecipes(){
           <div class="rcp-cell"><div class="rcp-v" style="color:var(--blue)">${Math.round(r.prot/s*10)/10}g</div><div class="rcp-l">Protein</div></div>
           <div class="rcp-cell"><div class="rcp-v" style="color:var(--yellow)">${Math.round(r.carbs/s*10)/10}g</div><div class="rcp-l">Carbs</div></div>
           <div class="rcp-cell"><div class="rcp-v" style="color:var(--teal)">${Math.round(r.fat/s*10)/10}g</div><div class="rcp-l">Fat</div></div>
-          <div class="rcp-cell"><div class="rcp-v" style="color:var(--purple)">${Math.round(r.fiber/s*10)/10}g</div><div class="rcp-l">Fiber</div></div>
-          <div class="rcp-cell"><div class="rcp-v" style="color:var(--orange)">${Math.round(r.vita/s)}%</div><div class="rcp-l">Vit A</div></div>
+          <div class="rcp-cell"><div class="rcp-v" style="color:var(--purple)">${Math.round((r.fiber||0)/s*10)/10}g</div><div class="rcp-l">Fiber</div></div>
+          <div class="rcp-cell"><div class="rcp-v" style="color:var(--orange)">${Math.round((r.vita||0)/s)}%</div><div class="rcp-l">Vit A</div></div>
         </div>
         ${r.notes?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4">${r.notes}</div>`:''}
         ${r.url?`<a href="${r.url}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--teal);text-decoration:none;margin-bottom:10px;padding:5px 10px;border:1px solid var(--teal);border-radius:8px;font-family:'Archivo',sans-serif;font-weight:700">🔗 View Original Recipe</a>`:''}
-        ${r.directions?`
-          <div style="margin-bottom:12px">
-            <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-family:'Archivo',sans-serif">Directions</div>
-            <div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${r.directions}</div>
-          </div>`:''}
+        ${r.directions?`<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-family:'Archivo',sans-serif">Directions</div><div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${r.directions}</div></div>`:''}
         <div class="rc-actions">
           <button class="btn-recipe primary" onclick="openLogRecipe(${r.id})">+ Log Serving</button>
           <button class="btn-recipe" onclick="editRecipe(${r.id})">✏️ Edit</button>
@@ -1586,6 +1625,9 @@ function renderRecipes(){
     </div>`;
   }).join('');
 }
+
+function drillRecipes(type,key,label){recipeDrilldown={type,key,label};renderRecipes();}
+
 
 function toggleFav(id){
   const r=recipes.find(x=>x.id===id);if(!r)return;
@@ -2713,6 +2755,40 @@ function deleteSelectedRecipes(){
   const bar=document.getElementById('recipe-select-bar');if(bar)bar.style.display='none';
   renderRecipes();
   toast('Deleted');
+}
+
+
+// ══ RECIPE TILE DISPLAY ══
+const CAT_COLORS={
+  chicken:'#8B4513',beef:'#722F37',pork:'#CD853F',fish:'#4682B4',
+  egg:'#DAA520',rice:'#6B8E23',pasta:'#D2691E',noodle:'#CD853F',
+  salad:'#228B22',soup:'#8B6914',vegetable:'#2E8B57',vegetarian:'#3CB371',
+  casserole:'#8B4513',sauce:'#B22222',bread:'#DEB887',cake:'#C71585',
+  cookie:'#A0522D',tart:'#8B0000',beans:'#8B6914',chili:'#B22222',
+  bowl:'#4B6584',default:'#2d2d35'
+};
+const CAT_EMOJI={
+  chicken:'🍗',beef:'🥩',pork:'🥓',fish:'🐟',egg:'🥚',rice:'🍚',
+  pasta:'🍝',noodle:'🍜',salad:'🥗',soup:'🍲',vegetable:'🥦',
+  vegetarian:'🌿',casserole:'🫕',sauce:'🍅',bread:'🍞',cake:'🎂',
+  cookie:'🍪',tart:'🥧',beans:'🫘',chili:'🌶️',bowl:'🥣',
+  breakfast:'🍳',main:'🍽️',side:'🥗',snack:'🍎',dessert:'🍰',none:'📋'
+};
+const COURSE_COLORS={breakfast:'#8B4513',main:'#722F37',side:'#2E8B57',snack:'#4B6584',dessert:'#C71585',none:'#444'};
+
+function getRecipeTileImg(recipe){
+  if(recipe&&recipe.photo)return `<img src="${recipe.photo}" onerror="this.parentElement.innerHTML='<div class=\'recipe-tile-bg\'>${CAT_EMOJI[recipe.course]||'🍽️'}</div>'">`;
+  return null;
+}
+
+function getCategoryTileHtml(key,type){
+  // Find first recipe with a photo in this category
+  let matchFn=type==='course'?r=>r.course===key:r=>(r.cats||[]).includes(key);
+  const withPhoto=recipes.filter(matchFn).find(r=>r.photo);
+  const emoji=CAT_EMOJI[key]||'🍽️';
+  const color=type==='course'?COURSE_COLORS[key]||'#333':CAT_COLORS[key]||CAT_COLORS.default;
+  if(withPhoto)return `<img src="${withPhoto.photo}" onerror="this.style.display='none'">`;
+  return `<div class="recipe-tile-bg" style="background:${color}">${emoji}</div>`;
 }
 
 function clearToday(){const label=activeDayOffset===0?'today':new Date(getActiveDayKey()).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!confirm('Clear '+label+'?'))return;entries=[];S('fl_e_'+getActiveDayKey(),entries);render();document.getElementById('coach-txt').textContent="Log your first meal and I'll guide you through the day.";toast('Cleared')}
