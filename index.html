@@ -2070,21 +2070,21 @@ function doBulkImport(){
        }
        // cats: merge cats + tags + categories, normalise slugs
        const _cats=[...new Set([...(r.cats||[]),...(r.tags||[]),...(r.categories||[])].map(c=>String(c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
-       // Always treat imported values as per-serving, multiply by servings for total batch
-       // This matches how the app works natively (stores total, displays total/servings)
+       // Store values exactly as received — no multiplication
+       // Meal prep chat outputs total batch macros; app divides by servings to show per-serving
        const _srvs=r.servings||1;
        recipes.push({
          id:Date.now()+Math.random(),
          name:r.name,servings:_srvs,notes:_notes,directions:r.directions||'',url:r.url||'',
-         cal:Math.round(_cal*_srvs),
-         prot:Math.round(_prot*_srvs*10)/10,
-         carbs:Math.round(_carbs*_srvs*10)/10,
-         fat:Math.round(_fat*_srvs*10)/10,
-         fiber:Math.round(_fiber*_srvs*10)/10,
-         vita:Math.round(+(r.vita||r.vitamin_a||0)*_srvs),
-         iron:Math.round(+(r.iron||0)*_srvs*10)/10,
-         sodium:Math.round(+(r.sodium||0)*_srvs),
-         sugar:Math.round(+(r.sugar||0)*_srvs*10)/10,
+         cal:Math.round(_cal),
+         prot:Math.round(_prot*10)/10,
+         carbs:Math.round(_carbs*10)/10,
+         fat:Math.round(_fat*10)/10,
+         fiber:Math.round(_fiber*10)/10,
+         vita:Math.round(+(r.vita||r.vitamin_a||0)),
+         iron:Math.round(+(r.iron||0)*10)/10,
+         sodium:Math.round(+(r.sodium||0)),
+         sugar:Math.round(+(r.sugar||0)*10)/10,
          course:_course,cats:_cats,
          photo:null,favorite:false,baseId:null,created:Date.now()
        });
