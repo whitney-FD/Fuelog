@@ -2152,76 +2152,48 @@ function openBulkImport(){
   openOverlay('overlay-bulk');
 }
 function doBulkImport(){
-  const raw=document.getElementById('bulk-json-ta').value.trim();
-  if(!raw){toast('Paste JSON first');return;}
+  let raw=document.getElementById('bulk-json-ta').value;
+  if(!raw||!raw.trim()){toast('Paste or upload JSON first');return;}
   try{
-    // Strip smart/curly quotes from mobile keyboards
-    let cleaned=raw
-      .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g,'"')
-      .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g,"'")
+    // Normalize — strip BOM, curly quotes, extra whitespace
+    raw=raw.replace(/^\uFEFF/,'')
+      .replace(/[\u201C\u201D]/g,'"')
+      .replace(/[\u2018\u2019]/g,"'")
       .trim();
-    // Auto-repair truncated paste: ensure array wrapper
-    if(!cleaned.startsWith('[')){
-      const s=cleaned.indexOf('[');
-      cleaned=s>-1?cleaned.slice(s):'['+cleaned;
-    }
-    // Auto-repair missing closing bracket from truncated paste
-    if(!cleaned.endsWith(']')){
-      const opens=(cleaned.match(/\{/g)||[]).length;
-      const closes=(cleaned.match(/\}/g)||[]).length;
-      if(opens>closes)cleaned+='}'.repeat(opens-closes);
-      if(!cleaned.endsWith(']'))cleaned+=']';
-    }
-    let arr=JSON.parse(cleaned);
+    // Strip markdown fences
+    raw=raw.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'').trim();
+    // Find the JSON array — grab from first [ to last ]
+    const start=raw.indexOf('[');
+    const end=raw.lastIndexOf(']');
+    if(start===-1||end===-1||end<=start){toast('No JSON array found');return;}
+    raw=raw.slice(start,end+1);
+    let arr=JSON.parse(raw);
     if(!Array.isArray(arr))arr=[arr];
     const existingNames=new Set(recipes.map(r=>r.name.toLowerCase()));
     let added=0,skipped=0;
     arr.forEach(r=>{
       if(!r.name){skipped++;return;}
       if(existingNames.has(r.name.toLowerCase())){skipped++;return;}
-       // Normalize alternate field names — handles calories/cal, protein/prot, tags/cats, course as array
-       const _cal=+(r.cal||r.calories||r.kcal||0);
-       const _prot=+(r.prot||r.protein||r.proteins||0);
-       const _carbs=+(r.carbs||r.carbohydrates||r.carb||0);
-       const _fat=+(r.fat||r.fats||r.lipids||0);
-       const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0);
-       const _notes=r.notes||r.ingredients||r.description||'';
-       // course: accept string OR array — map to single app value
-       let _course=r.course||'none';
-       if(Array.isArray(_course)){
-         const map={breakfast:'breakfast',lunch:'main',dinner:'main',main:'main',snack:'snack',side:'side',dessert:'dessert'};
-         _course=_course.map(c=>map[String(c).toLowerCase()]).find(Boolean)||'main';
-       }
-       // cats: merge cats + tags + categories, normalise slugs
-       const _cats=[...new Set([...(r.cats||[]),...(r.tags||[]),...(r.categories||[])].map(c=>String(c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
-       // Store values exactly as received — no multiplication
-       // Meal prep chat outputs total batch macros; app divides by servings to show per-serving
-       const _srvs=r.servings||1;
-       recipes.push({
-         id:Date.now()+Math.random(),
-         name:r.name,servings:_srvs,notes:_notes,directions:r.directions||'',url:r.url||'',
-         cal:Math.round(_cal),
-         prot:Math.round(_prot*10)/10,
-         carbs:Math.round(_carbs*10)/10,
-         fat:Math.round(_fat*10)/10,
-         fiber:Math.round(_fiber*10)/10,
-         vita:Math.round(+(r.vita||r.vitamin_a||0)),
-         iron:Math.round(+(r.iron||0)*10)/10,
-         sodium:Math.round(+(r.sodium||0)),
-         sugar:Math.round(+(r.sugar||0)*10)/10,
-         course:_course,cats:_cats,
-         photo:null,favorite:false,baseId:null,created:Date.now()
-       });
+      const _cal=+(r.cal||r.calories||r.kcal||0);
+      const _prot=+(r.prot||r.protein||r.proteins||0);
+      const _carbs=+(r.carbs||r.carbohydrates||r.carb||0);
+      const _fat=+(r.fat||r.fats||r.lipids||0);
+      const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0);
+      const _notes=r.notes||r.ingredients||r.description||'';
+      let _course=r.course||'none';
+      if(Array.isArray(_course)){const map={breakfast:'breakfast',lunch:'main',dinner:'main',main:'main',snack:'snack',side:'side',dessert:'dessert'};_course=_course.map(c=>map[String(c).toLowerCase()]).find(Boolean)||'main';}
+      const _cats=[...new Set([...(r.cats||[]),...(r.tags||[]),...(r.categories||[])].map(c=>String(c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
+      recipes.push({id:Date.now()+Math.random(),name:r.name,servings:+(r.servings||1),notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(+(r.vita||r.vitamin_a||0)),iron:Math.round(+(r.iron||0)*10)/10,sodium:Math.round(+(r.sodium||0)),sugar:Math.round(+(r.sugar||0)*10)/10,course:_course,cats:_cats,photo:null,favorite:false,baseId:null,created:Date.now()});
       existingNames.add(r.name.toLowerCase());
       added++;
     });
     S('fl_recipes',recipes);
     document.getElementById('bulk-result').textContent=`✓ Added ${added} recipes, skipped ${skipped} duplicates`;
+    document.getElementById('bulk-result').style.color='var(--lime)';
     renderRecipes();
-    if(added>0)toast(`Imported ${added} recipes!`);
+    if(added>0){toast(`Imported ${added} recipes!`);closeOverlay('overlay-bulk');}
   }catch(err){
-    const charCount=document.getElementById('bulk-json-ta').value.length;
-    document.getElementById('bulk-result').textContent=`Invalid JSON (${charCount} chars pasted) — if on mobile, try pasting in Notes app first then copy here`;
+    document.getElementById('bulk-result').textContent='Parse error: '+err.message;
     document.getElementById('bulk-result').style.color='var(--red)';
   }
 }
