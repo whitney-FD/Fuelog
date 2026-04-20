@@ -1776,29 +1776,39 @@ function renderSlots(){
     const cls=activeSlot===s?'active':has?'has-food':missed?'missed':'';
     return `<div class="slot-chip ${cls}" onclick="setSlot('${s}')">${SLOT_ICONS[s]} ${SLOT_LABELS[s]}</div>`;
   }).join('');
-  document.getElementById('slot-row').innerHTML=allChip+chips;
+  const suppCount=entries.filter(e=>e.src==='supplement').length;
+  const suppChip=suppCount?`<div class="slot-chip ${activeSlot==='supplement'?'active':''}" onclick="setSlot('supplement')" style="border-color:var(--plum);color:${activeSlot==='supplement'?'#fff':'var(--plum)'}">💊 Supps · ${suppCount}</div>`:'';
+  document.getElementById('slot-row').innerHTML=allChip+chips+suppChip;
 }
 
 function setSlot(s){
   activeSlot=s;renderSlots();renderEntries();
-  document.getElementById('slot-label-hdr').textContent=s==='all'?'All Meals':SLOT_ICONS[s]+' '+SLOT_LABELS[s];
+  const labels={all:'All Meals',supplement:'💊 Supplements'};
+  document.getElementById('slot-label-hdr').textContent=labels[s]||(SLOT_ICONS[s]+' '+SLOT_LABELS[s]);
 }
 
 function renderEntries(){
   const el=document.getElementById('entries-list');
-  // Show everything including supplements — users need to see & delete
-  // supplement entries too (e.g. if a bad one is spiking a micronutrient).
-  const foodEntries=entries.slice();
-  const vis=activeSlot==='all'?foodEntries:foodEntries.filter(e=>e.slot===activeSlot);
+  // Supplements get their own section / filter chip. They never clutter the
+  // meal list. Meals = every non-supplement entry.
+  const isSupp=e=>e.src==='supplement';
+  const mealEntries=entries.filter(e=>!isSupp(e));
+  const suppEntries=entries.filter(isSupp);
 
-  if(!vis.length&&foodEntries.length===0){
+  // Slot filter — 'supplement' is a pseudo-slot that shows only supplements.
+  let vis;
+  if(activeSlot==='all')vis=mealEntries;
+  else if(activeSlot==='supplement')vis=suppEntries;
+  else vis=mealEntries.filter(e=>e.slot===activeSlot);
+
+  if(!vis.length&&mealEntries.length===0&&suppEntries.length===0){
     el.innerHTML=`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">Nothing logged yet</div></div>`;return;
   }
 
   if(activeSlot==='all'){
     let html='';
     SLOTS.forEach(s=>{
-      const se=foodEntries.filter(e=>e.slot===s);
+      const se=mealEntries.filter(e=>e.slot===s);
       const st=totals(se);
       const hasFood=se.length>0;
       const bodyId=`meal-body-${s}`;
@@ -1818,9 +1828,27 @@ function renderEntries(){
         </div>
       </div>`;
     });
-    const unslotted=foodEntries.filter(e=>!e.slot);
+    const unslotted=mealEntries.filter(e=>!e.slot);
     if(unslotted.length){
       html+=`<div class="meal-section"><div class="meal-section-hdr"><div class="meal-section-hdr-left"><span class="meal-section-name">Other</span></div></div><div class="meal-section-body">${unslotted.map(entryHTML).join('')}</div></div>`;
+    }
+    // Supplements — collapsed by default, at the end, distinct visual.
+    if(suppEntries.length){
+      const suppT=totals(suppEntries);
+      const collapsed=mealCollapsed.supplement===undefined?true:!!mealCollapsed.supplement; // default collapsed, toggle flips
+      html+=`<div class="meal-section" style="border-top:1px dashed var(--border);margin-top:10px;padding-top:6px">
+        <div class="meal-section-hdr" onclick="toggleMealSection('supplement')">
+          <div class="meal-section-hdr-left">
+            <span class="meal-section-icon">💊</span>
+            <span class="meal-section-name" style="color:var(--plum)">Supplements · ${suppEntries.length}</span>
+            <span class="meal-section-cal">${Math.round(suppT.cal)} kcal${suppT.iron>0?` · Fe ${Math.round(suppT.iron*10)/10}mg`:''}</span>
+          </div>
+          <span class="meal-section-chevron ${collapsed?'collapsed':''}">▾</span>
+        </div>
+        <div class="meal-section-body ${collapsed?'hidden':''}">
+          ${suppEntries.slice().reverse().map(entryHTML).join('')}
+        </div>
+      </div>`;
     }
     el.innerHTML=html;
   }else{
@@ -1831,7 +1859,7 @@ function renderEntries(){
 function entryHTML(e){
   const isSupp=e.src==='supplement';
   const ironHigh=e.iron&&e.iron>50;
-  return `<div class="entry-card"${isSupp?' style="border-left:3px solid var(--plum)"':''}>
+  return `<div class="entry-card">
     <div class="ec-name">${isSupp?'💊 ':''}${e.name}${e.conf==='low'?' ⚠️':''}</div>
     <div class="ec-macros">
       <div class="ec-m">Cal <b>${Math.round(e.cal)}</b></div>
