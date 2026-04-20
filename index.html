@@ -1640,10 +1640,17 @@ async function scanManualSubmit(){
   await lookupBarcode(code);
 }
 
+let lastBarcodeLookup={code:null,at:0};
 async function lookupBarcode(code){
-  toast('Looking up barcode...');
+  // Duplicate-scan protection — same code within 4s is ignored.
+  const now=Date.now();
+  if(code===lastBarcodeLookup.code&&now-lastBarcodeLookup.at<4000){
+    toast('Already logged — pick a different barcode',3000);
+    return;
+  }
+  lastBarcodeLookup={code,at:now};
+  toast('Looking up '+code+'…',1800);
   try{
-    // Try Open Food Facts by barcode
     const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
     const data=await res.json();
     if(data.status===1&&data.product&&data.product.product_name){
@@ -1652,18 +1659,17 @@ async function lookupBarcode(code){
       const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
       const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
       addEntry(entry);addToLibrary(entry);refreshCoach();
-      toast('Logged: '+(p.product_name||'Product'));
+      toast('✓ Logged: '+entry.name+' — '+entry.cal+' cal',4000);
       return;
     }
-    // Fallback: search by name if barcode not found
-    toast('Barcode not in database — searching by name...');
+    // Not in OFF — open search fallback with the product name (if any) or the raw code.
     const nameToSearch=data.product&&data.product.product_name?data.product.product_name:code;
     document.getElementById('food-ta').value=nameToSearch;
-    await doSearch(nameToSearch);
-    toast('Barcode not found — results shown below, or type to refine',3500);
+    toast('Not in OFF — search results ready to refine',3500);
+    doSearch(nameToSearch);
   }catch(e){
     console.error(e);
-    toast('Barcode lookup failed — try typing the name');
+    toast('Barcode lookup failed — '+(e.message||'try typing the name'),4000);
   }
 }
 
@@ -1780,8 +1786,9 @@ function setSlot(s){
 
 function renderEntries(){
   const el=document.getElementById('entries-list');
-  // Filter out supplement entries from food log display
-  const foodEntries=entries.filter(e=>e.src!=='supplement');
+  // Show everything including supplements — users need to see & delete
+  // supplement entries too (e.g. if a bad one is spiking a micronutrient).
+  const foodEntries=entries.slice();
   const vis=activeSlot==='all'?foodEntries:foodEntries.filter(e=>e.slot===activeSlot);
 
   if(!vis.length&&foodEntries.length===0){
@@ -1822,8 +1829,10 @@ function renderEntries(){
 }
 
 function entryHTML(e){
-  return `<div class="entry-card">
-    <div class="ec-name">${e.name}${e.conf==='low'?' ⚠️':''}</div>
+  const isSupp=e.src==='supplement';
+  const ironHigh=e.iron&&e.iron>50;
+  return `<div class="entry-card"${isSupp?' style="border-left:3px solid var(--plum)"':''}>
+    <div class="ec-name">${isSupp?'💊 ':''}${e.name}${e.conf==='low'?' ⚠️':''}</div>
     <div class="ec-macros">
       <div class="ec-m">Cal <b>${Math.round(e.cal)}</b></div>
       <div class="ec-m" style="color:var(--blue)">P <b>${Math.round(e.prot*10)/10}g</b></div>
@@ -1831,6 +1840,7 @@ function entryHTML(e){
       <div class="ec-m" style="color:var(--teal)">F <b>${Math.round(e.fat*10)/10}g</b></div>
       ${e.fiber>0?`<div class="ec-m" style="color:var(--purple)">Fib <b>${Math.round(e.fiber*10)/10}g</b></div>`:''}
       ${e.vita>0?`<div class="ec-m" style="color:var(--orange)">VitA <b>${Math.round(e.vita)}%</b></div>`:''}
+      ${e.iron>0?`<div class="ec-m" style="color:${ironHigh?'var(--red)':'var(--plum)'}">Fe <b>${Math.round(e.iron*10)/10}mg</b>${ironHigh?' ⚠️':''}</div>`:''}
     </div>
     ${e.serving?`<div class="ec-time">${e.serving} · ${e.time}</div>`:`<div class="ec-time">${e.time}</div>`}
     ${e.note?`<div class="ec-warn">⚠️ ${e.note}</div>`:''}
@@ -2192,6 +2202,9 @@ function drillRecipes(type,key,label){
   const chips=document.getElementById('recipe-filter-chips');
   if(chips)chips.style.display='flex';
   renderRecipes();
+  // Scroll the recipes screen to the top so the drill-down list is visible.
+  const scr=document.getElementById('screen-recipes');
+  if(scr)scr.scrollTo?scr.scrollTo({top:0,behavior:'smooth'}):scr.scrollTop=0;
 }
 
 
