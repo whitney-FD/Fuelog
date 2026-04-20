@@ -2,10 +2,11 @@
   "name": "FuelLog",
   "short_name": "FuelLog",
   "description": "Personal nutrition tracker with deficit tracking and meal prep recipes",
-  "start_url": "/index.html",
+  "start_url": "/Fuelog/",
+  "scope": "/Fuelog/",
   "display": "standalone",
-  "background_color": "#0a0a0b",
-  "theme_color": "#0a0a0b",
+  "background_color": "#FAF3E7",
+  "theme_color": "#1FC2C0",
   "orientation": "portrait",
   "icons": [
     {
