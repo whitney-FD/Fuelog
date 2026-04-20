@@ -520,10 +520,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="input-lbl">Log Food</div>
     <div class="scanner-wrap" id="scan-wrap">
       <div class="scanner-inner">
-        <video id="scan-video" autoplay playsinline></video>
+        <video id="scan-video" autoplay playsinline muted></video>
         <div class="scan-frame"></div>
       </div>
       <div class="scan-status" id="scan-status">Point camera at barcode</div>
+      <div style="display:flex;gap:6px;padding:6px 10px 10px">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="scan-manual" placeholder="Or type the code (8–14 digits)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="flex:1;background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none">
+        <button class="btn-sm" onclick="scanManualSubmit()" style="flex-shrink:0">Look up</button>
+      </div>
     </div>
     <div class="search-wrap">
       <input type="text" class="food-ta" id="food-ta" placeholder="Type to search your foods or describe a meal..." oninput="onFoodInput(event)" onkeydown="handleLogKey(event)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
@@ -1506,10 +1510,26 @@ Each object: {"name":"display name","cal":number,"prot":number,"carbs":number,"f
 Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate. No markdown, no explanation, just the JSON array.`,
       q
     );
+    // Robust JSON extraction: Claude sometimes wraps its answer in prose,
+    // markdown fences, or backticks. Try a clean parse first, then fall back
+    // to extracting the first JSON array or object by bracket matching.
+    let foods=null;
     const clean=r.replace(/\`\`\`json|\`\`\`/g,'').trim();
-    // Handle both array and single object responses
-    let foods=JSON.parse(clean);
-    if(!Array.isArray(foods)) foods=[foods];
+    try{foods=JSON.parse(clean);}catch{}
+    if(foods==null){
+      const arrStart=clean.indexOf('['),arrEnd=clean.lastIndexOf(']');
+      if(arrStart>-1&&arrEnd>arrStart){
+        try{foods=JSON.parse(clean.slice(arrStart,arrEnd+1));}catch{}
+      }
+    }
+    if(foods==null){
+      const objStart=clean.indexOf('{'),objEnd=clean.lastIndexOf('}');
+      if(objStart>-1&&objEnd>objStart){
+        try{foods=JSON.parse(clean.slice(objStart,objEnd+1));}catch{}
+      }
+    }
+    if(foods==null)throw new Error('AI returned non-JSON: '+clean.slice(0,80));
+    if(!Array.isArray(foods))foods=[foods];
     const slot=currentSlot();
     const t=nowTime();
     foods.forEach((food,i)=>{
@@ -1521,7 +1541,8 @@ Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate
     if(foods.length>1) toast(`Logged ${foods.length} items`);
     refreshCoach();
   }catch(err){
-    toast(err.message&&err.message.includes('No API')?'Add API key in Goals tab':'Could not parse — try more detail');
+    if(err.message&&err.message.includes('No API')){toast('Add API key in Goals tab');}
+    else{toast('AI error: '+(err.message||'unknown').slice(0,100),4000);}
   }
   btn.disabled=false;btn.textContent='LOG';
 }
@@ -1553,29 +1574,68 @@ async function toggleScan(){
   if(scannerOn){stopScan();wrap.classList.remove('open');scannerOn=false;}
   else{wrap.classList.add('open');scannerOn=true;startScan();}
 }
+let scanStream=null,scanRAF=null,scanDetector=null;
 async function startScan(){
+  const statusEl=document.getElementById('scan-status');
+  const videoEl=document.getElementById('scan-video');
   try{
-    // BrowserMultiFormatReader reads UPC-A/E, EAN-8/13, Code128, QR, and more —
-    // far better food-product coverage than the old BrowserBarcodeReader.
+    statusEl.textContent='Starting camera...';
+    scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},
+      audio:false
+    });
+    videoEl.srcObject=scanStream;
+    await videoEl.play().catch(()=>{});
+    // Prefer the browser's native BarcodeDetector — way faster and more reliable
+    // than ZXing on Chrome Android. Fall back to ZXing when unavailable.
+    if('BarcodeDetector' in window){
+      try{
+        const formats=await window.BarcodeDetector.getSupportedFormats();
+        scanDetector=new window.BarcodeDetector({formats:formats.length?formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
+        statusEl.textContent='Point camera at barcode — hold steady';
+        const tick=async()=>{
+          if(!scannerOn)return;
+          try{
+            const codes=await scanDetector.detect(videoEl);
+            if(codes&&codes.length){
+              const code=codes[0].rawValue;
+              stopScan();document.getElementById('scan-wrap').classList.remove('open');scannerOn=false;
+              await lookupBarcode(code);return;
+            }
+          }catch{}
+          scanRAF=requestAnimationFrame(tick);
+        };
+        scanRAF=requestAnimationFrame(tick);
+        return;
+      }catch(e){/* fall through to ZXing */}
+    }
+    // ZXing fallback
     codeReader=new ZXing.BrowserMultiFormatReader();
-    document.getElementById('scan-status').textContent='Starting camera...';
-    // Force the back ("environment") camera so users point their phone at a
-    // barcode and it actually sees it (default picked the front camera).
-    await codeReader.decodeFromConstraints(
-      {video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}},
-      'scan-video',
-      async(res,err)=>{
-        if(res){
-          const code=res.getText?res.getText():res.text;
-          stopScan();document.getElementById('scan-wrap').classList.remove('open');scannerOn=false;
-          await lookupBarcode(code);
-        }
+    statusEl.textContent='Point camera at barcode (ZXing fallback)';
+    await codeReader.decodeFromStream(scanStream,videoEl,async(res)=>{
+      if(res){
+        const code=res.getText?res.getText():res.text;
+        stopScan();document.getElementById('scan-wrap').classList.remove('open');scannerOn=false;
+        await lookupBarcode(code);
       }
-    );
-    document.getElementById('scan-status').textContent='Point camera at barcode';
-  }catch(e){document.getElementById('scan-status').textContent='Camera error: '+e.message}
+    });
+  }catch(e){statusEl.textContent='Camera error: '+(e.message||e.name||'unknown')+' — type the code below'}
 }
-function stopScan(){if(codeReader){codeReader.reset();codeReader=null}}
+function stopScan(){
+  if(scanRAF){cancelAnimationFrame(scanRAF);scanRAF=null;}
+  scanDetector=null;
+  if(codeReader){try{codeReader.reset();}catch{}codeReader=null;}
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+  const v=document.getElementById('scan-video');if(v)v.srcObject=null;
+}
+async function scanManualSubmit(){
+  const el=document.getElementById('scan-manual');
+  const code=(el.value||'').replace(/\D/g,'');
+  if(code.length<8){toast('Enter an 8–14 digit barcode');return;}
+  el.value='';
+  stopScan();document.getElementById('scan-wrap').classList.remove('open');scannerOn=false;
+  await lookupBarcode(code);
+}
 
 async function lookupBarcode(code){
   toast('Looking up barcode...');
@@ -3096,31 +3156,55 @@ function openSuppScan(){
   }
 }
 
+let suppScanStream=null,suppScanRAF=null,suppScanDetector=null;
 async function startSuppScan(){
+  const statusEl=document.getElementById('supp-scan-status');
+  const videoEl=document.getElementById('supp-scan-video');
   try{
+    statusEl.textContent='Starting camera...';
+    suppScanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false
+    });
+    videoEl.srcObject=suppScanStream;await videoEl.play().catch(()=>{});
+    if('BarcodeDetector' in window){
+      try{
+        const formats=await window.BarcodeDetector.getSupportedFormats();
+        suppScanDetector=new window.BarcodeDetector({formats:formats.length?formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
+        statusEl.textContent='Point camera at supplement barcode — hold steady';
+        const tick=async()=>{
+          if(!suppScannerOn)return;
+          try{
+            const codes=await suppScanDetector.detect(videoEl);
+            if(codes&&codes.length){
+              const code=codes[0].rawValue;
+              stopSuppScan();document.getElementById('supp-scan-wrap').classList.remove('open');suppScannerOn=false;
+              await lookupSuppBarcode(code);return;
+            }
+          }catch{}
+          suppScanRAF=requestAnimationFrame(tick);
+        };
+        suppScanRAF=requestAnimationFrame(tick);
+        return;
+      }catch(e){}
+    }
     suppCodeReader=new ZXing.BrowserMultiFormatReader();
-    document.getElementById('supp-scan-status').textContent='Starting camera...';
-    await suppCodeReader.decodeFromConstraints(
-      {video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}},
-      'supp-scan-video',
-      async(res,err)=>{
-        if(res){
-          const code=res.getText?res.getText():res.text;
-          stopSuppScan();
-          document.getElementById('supp-scan-wrap').classList.remove('open');
-          suppScannerOn=false;
-          await lookupSuppBarcode(code);
-        }
+    statusEl.textContent='Point camera at supplement barcode';
+    await suppCodeReader.decodeFromStream(suppScanStream,videoEl,async(res)=>{
+      if(res){
+        const code=res.getText?res.getText():res.text;
+        stopSuppScan();document.getElementById('supp-scan-wrap').classList.remove('open');suppScannerOn=false;
+        await lookupSuppBarcode(code);
       }
-    );
-    document.getElementById('supp-scan-status').textContent='Point camera at supplement barcode';
-  }catch(e){
-    document.getElementById('supp-scan-status').textContent='Camera error: '+e.message;
-  }
+    });
+  }catch(e){statusEl.textContent='Camera error: '+(e.message||e.name||'unknown');}
 }
 
 function stopSuppScan(){
-  if(suppCodeReader){suppCodeReader.reset();suppCodeReader=null;}
+  if(suppScanRAF){cancelAnimationFrame(suppScanRAF);suppScanRAF=null;}
+  suppScanDetector=null;
+  if(suppCodeReader){try{suppCodeReader.reset();}catch{}suppCodeReader=null;}
+  if(suppScanStream){suppScanStream.getTracks().forEach(t=>t.stop());suppScanStream=null;}
+  const v=document.getElementById('supp-scan-video');if(v)v.srcObject=null;
 }
 
 async function lookupSuppBarcode(code){
