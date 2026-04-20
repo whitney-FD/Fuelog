@@ -645,6 +645,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="goal-section-title">Tracked Nutrients</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Choose which extras show on your dashboard.</div>
     <div id="nutrient-toggles" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+
+    <div class="goal-section-title">My Food Library</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Foods you've logged before. Edit bad macros or delete entries you don't want auto-suggested.</div>
+    <button class="btn-full secondary" onclick="openFoodLibraryEditor()">🍽 Manage My Foods</button>
+
     <div class="goal-section-title">Export / Import Data</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Export saves ALL your data (logs, recipes, saved meals, food library) as a file. Import restores it. Do this before any app update.</div>
     <button class="btn-full" onclick="exportData()" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;margin-bottom:8px;box-shadow:0 4px 14px rgba(111,75,191,.3)">⬇️ Export All Data</button>
@@ -979,6 +984,40 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
+<!-- MODAL: FOOD LIBRARY EDITOR -->
+<div class="overlay" id="overlay-food-lib" onclick="closeOverlay('overlay-food-lib')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">My Food Library</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Tap a food to edit its macros, or tap ✕ to delete it. These are the foods that appear as "Mine" in search.</div>
+    <input class="field-input" type="text" id="food-lib-search" placeholder="Search your foods…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="renderFoodLibraryList()">
+    <div id="food-lib-list" style="display:flex;flex-direction:column;gap:6px;max-height:56vh;overflow-y:auto;margin-bottom:10px"></div>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-food-lib')">Done</button>
+  </div>
+</div>
+
+<!-- MODAL: EDIT FOOD LIBRARY ENTRY -->
+<div class="overlay" id="overlay-food-edit" onclick="closeOverlay('overlay-food-edit')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit Food</div>
+    <div class="field-lbl">Name</div>
+    <input class="field-input" type="text" id="fe-name">
+    <div class="field-lbl">Serving description</div>
+    <input class="field-input" type="text" id="fe-serving" placeholder="e.g. 1 stick (28g)">
+    <div class="macro-grid">
+      <div class="macro-field"><label>Calories</label><input type="number" id="fe-cal" step="any"></div>
+      <div class="macro-field"><label>Protein g</label><input type="number" id="fe-prot" step="any"></div>
+      <div class="macro-field"><label>Carbs g</label><input type="number" id="fe-carbs" step="any"></div>
+      <div class="macro-field"><label>Fat g</label><input type="number" id="fe-fat" step="any"></div>
+      <div class="macro-field"><label>Fiber g</label><input type="number" id="fe-fiber" step="any"></div>
+      <div class="macro-field"><label>Vit A %</label><input type="number" id="fe-vita" step="any"></div>
+    </div>
+    <button class="btn-full" onclick="saveFoodLibraryEdit()">Save</button>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-food-edit')">Cancel</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
@@ -1249,6 +1288,69 @@ function addToLibrary(entry){
   S('fl_foods',foodLibrary);
 }
 
+// ══ MY FOOD LIBRARY EDITOR ══
+let foodEditIndex=-1;
+function openFoodLibraryEditor(){
+  document.getElementById('food-lib-search').value='';
+  renderFoodLibraryList();
+  openOverlay('overlay-food-lib');
+}
+function renderFoodLibraryList(){
+  const q=(document.getElementById('food-lib-search').value||'').toLowerCase().trim();
+  const el=document.getElementById('food-lib-list');
+  const items=foodLibrary
+    .map((f,i)=>({f,i}))
+    .filter(({f})=>!q||(f.name||'').toLowerCase().includes(q))
+    .sort((a,b)=>(b.f.count||0)-(a.f.count||0));
+  if(!items.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:10px 0;text-align:center">'+(foodLibrary.length?'No matches':'Your food library is empty. Foods you log will appear here.')+'</div>';return;}
+  el.innerHTML=items.map(({f,i})=>`
+    <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow-soft)">
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="editFoodLibraryEntry(${i})">
+        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(f.name||'').replace(/</g,'&lt;')}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${Math.round(f.cal||0)} cal · ${f.prot||0}g P · ${f.carbs||0}g C · ${f.fat||0}g F${f.serving?' · '+String(f.serving).replace(/</g,'&lt;'):''} · used ×${f.count||0}</div>
+      </div>
+      <button onclick="deleteFoodLibraryEntry(${i})" title="Delete" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:13px;padding:4px 9px;border-radius:8px">✕</button>
+    </div>`).join('');
+}
+function editFoodLibraryEntry(i){
+  const f=foodLibrary[i];if(!f)return;
+  foodEditIndex=i;
+  document.getElementById('fe-name').value=f.name||'';
+  document.getElementById('fe-serving').value=f.serving||'';
+  document.getElementById('fe-cal').value=f.cal||0;
+  document.getElementById('fe-prot').value=f.prot||0;
+  document.getElementById('fe-carbs').value=f.carbs||0;
+  document.getElementById('fe-fat').value=f.fat||0;
+  document.getElementById('fe-fiber').value=f.fiber||0;
+  document.getElementById('fe-vita').value=f.vita||0;
+  openOverlay('overlay-food-edit');
+}
+function saveFoodLibraryEdit(){
+  if(foodEditIndex<0||!foodLibrary[foodEditIndex])return;
+  const f=foodLibrary[foodEditIndex];
+  f.name=document.getElementById('fe-name').value.trim()||f.name;
+  f.serving=document.getElementById('fe-serving').value;
+  f.cal=+document.getElementById('fe-cal').value||0;
+  f.prot=+document.getElementById('fe-prot').value||0;
+  f.carbs=+document.getElementById('fe-carbs').value||0;
+  f.fat=+document.getElementById('fe-fat').value||0;
+  f.fiber=+document.getElementById('fe-fiber').value||0;
+  f.vita=+document.getElementById('fe-vita').value||0;
+  S('fl_foods',foodLibrary);
+  foodEditIndex=-1;
+  closeOverlay('overlay-food-edit');
+  renderFoodLibraryList();
+  toast('Saved');
+}
+function deleteFoodLibraryEntry(i){
+  const f=foodLibrary[i];if(!f)return;
+  if(!confirm(`Delete "${f.name}" from your food library?`))return;
+  foodLibrary.splice(i,1);
+  S('fl_foods',foodLibrary);
+  renderFoodLibraryList();
+  toast('Removed');
+}
+
 // ══ FOOD SEARCH ══
 let searchTimer=null;
 function onFoodInput(e){
@@ -1262,6 +1364,31 @@ function closeSearchResults(){
   document.getElementById('search-results').classList.remove('open');
 }
 
+// Open Food Facts returns serving_size as a freeform string ("28 g", "1 oz",
+// "2 tbsp (30g)", "0.88 oz", etc). Parse to grams carefully so we don't
+// scale macros wrong (e.g. treating 0.88 oz as 0.88 g like the old parser did).
+function parseServingGrams(p){
+  // 1) Prefer the structured numeric field if present.
+  const sq=parseFloat(p&&p.serving_quantity);
+  if(sq>0&&sq<10000)return sq;
+  const s=String((p&&p.serving_size)||'').toLowerCase();
+  if(!s)return null;
+  // 2) If the string contains something like "(30 g)" or "(30g)" or "(30ml)", use that.
+  const paren=s.match(/\(\s*([\d.]+)\s*(g|ml)\s*\)/);
+  if(paren){const v=parseFloat(paren[1]);if(v>0)return v;}
+  // 3) Match "<number><unit>" — recognise oz/g/ml/lb explicitly.
+  const m=s.match(/([\d.]+)\s*(oz|g|ml|lb)\b/);
+  if(m){
+    const v=parseFloat(m[1]);
+    if(!(v>0))return null;
+    const u=m[2];
+    if(u==='g'||u==='ml')return v;
+    if(u==='oz')return v*28.3495;
+    if(u==='lb')return v*453.592;
+  }
+  // 4) Give up — no reliable conversion, caller falls back to per-100g values.
+  return null;
+}
 let searchSeq=0;
 function renderSearchResults(q,matchedRecipes,mine,offResults,offStatus){
   const res=document.getElementById('search-results');
@@ -1325,8 +1452,9 @@ function doSearch(q){
       if(d&&d.products){
         offResults=d.products.filter(p=>p&&p.product_name).slice(0,5).map(p=>{
           const n=p.nutriments||{};
-          const srvG=parseFloat(p.serving_size)||100;const ratio=srvG/100;
-          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:p.serving_size||'100g',src:'off'};
+          const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
+          const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
+          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,src:'off'};
         });
       }
       renderSearchResults(q,matchedRecipes,mine,offResults,'done');
@@ -1449,8 +1577,9 @@ async function lookupBarcode(code){
     const data=await res.json();
     if(data.status===1&&data.product&&data.product.product_name){
       const p=data.product;const n=p.nutriments||{};
-      const srvG=parseFloat(p.serving_size)||100;const ratio=srvG/100;
-      const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:p.serving_size||'per 100g',conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
+      const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
+      const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
+      const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
       addEntry(entry);addToLibrary(entry);refreshCoach();
       toast('Logged: '+(p.product_name||'Product'));
       return;
