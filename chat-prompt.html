@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FuelLog · Recipe Chat Prompt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAF3E7;--card:#FFFFFF;--ink:#2E1F3A;--muted:#9A8FA6;--line:#E8DDD1;
+  --teal:#1FC2C0;--teal-deep:#0E8C8A;--plum:#6F4BBF;--hotpink:#F94892;--honey:#FFC857;
+  --g-teal:linear-gradient(135deg,#1FC2C0,#0E8C8A);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:15px;-webkit-font-smoothing:antialiased;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding:24px 18px 80px}
+header{margin-bottom:18px}
+.kicker{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--plum);font-weight:800;margin-bottom:6px}
+h1{font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.01em;margin-bottom:6px}
+h1 em{color:var(--teal-deep);font-style:italic}
+.sub{color:var(--muted);font-size:13px;max-width:560px;line-height:1.55}
+.copy-btn{position:sticky;top:12px;z-index:20;display:block;width:100%;padding:16px;border:none;border-radius:16px;background:var(--g-teal);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 18px rgba(31,194,192,.35);margin:16px 0 20px}
+.copy-btn.done{background:var(--plum);box-shadow:0 6px 18px rgba(111,75,191,.35)}
+.copy-btn:active{transform:scale(.98)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;overflow-x:auto;font-family:'SF Mono','Menlo',monospace;font-size:12px;line-height:1.6;color:var(--ink);box-shadow:0 4px 18px rgba(75,45,110,.06);white-space:pre-wrap;word-break:break-word}
+.rules{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-top:16px;box-shadow:0 4px 18px rgba(75,45,110,.06)}
+.rules h2{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin-bottom:8px}
+.rules ul{padding-left:18px;margin:0}
+.rules li{margin-bottom:6px;font-size:13px}
+.rules code{background:#FFF7EA;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-family:'SF Mono','Menlo',monospace;font-size:11px;color:var(--plum)}
+footer{text-align:center;color:var(--muted);font-size:11px;margin-top:24px;letter-spacing:.08em;text-transform:uppercase}
+footer a{color:var(--teal-deep);text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="kicker">FuelLog · Recipe Import</div>
+  <h1>Chat <em>prompt</em></h1>
+  <p class="sub">Paste this into your recipe chat once. From then on, any recipe you share comes back ready to paste into the FuelLog bulk-import modal.</p>
+</header>
+
+<button class="copy-btn" id="copyBtn">Copy prompt to clipboard</button>
+
+<pre id="prompt">When I share recipes, respond with ONLY a JSON array matching this schema — no prose, no markdown fences:
+
+[{
+  "name": "Sheet-Pan Chicken Bowls",
+  "servings": 8,
+  "course": "main",
+  "cats": ["chicken", "meal-prep", "casserole"],
+  "url": "https://source-recipe-link.com",
+  "directions": "1) Preheat oven to 425°F.\n2) Toss chicken + veg with oil and spices.\n3) Roast 25 min.\n4) Serve over rice.",
+  "ingredients": [
+    {
+      "name": "chicken breast (raw)",
+      "qty": 2,
+      "unit": "lb",
+      "cal": 960,
+      "prot": 200,
+      "carbs": 0,
+      "fat": 12,
+      "fiber": 0,
+      "vita": 0,
+      "iron": 2.7,
+      "sugar": 0,
+      "sodium": 410
+    },
+    {
+      "name": "jasmine rice (cooked)",
+      "qty": 3,
+      "unit": "cup",
+      "cal": 615,
+      "prot": 13,
+      "carbs": 135,
+      "fat": 1.2,
+      "fiber": 1.8,
+      "vita": 0,
+      "iron": 5.7,
+      "sugar": 0.3,
+      "sodium": 6
+    }
+  ]
+}]
+
+Rules:
+- Always wrap in an array [ ... ], even if sharing one recipe.
+- Use the ingredients array — FuelLog auto-computes recipe totals from it and auto-saves each ingredient to my library for reuse.
+- Per-ingredient cal / prot / carbs / fat / fiber / vita / iron / sugar / sodium are TOTALS for the qty × unit listed, not per unit.
+  Example: 2 lb chicken at 480 kcal/lb → "qty": 2, "unit": "lb", "cal": 960.
+- Allowed units: each, oz, lb, g, cup, tbsp, tsp, ml, serving.
+- Units of measure: cal in kcal; prot / carbs / fat / fiber / sugar in grams; vita as % daily value; iron and sodium in mg.
+- Use USDA FoodData Central values. Leave optional micronutrients (vita, iron, sugar, sodium) out of an ingredient rather than guessing.
+- course must be one of: breakfast, main, side, snack, dessert, none. Anything else defaults to main.
+- cats is an array of lowercase, hyphenated tags (e.g. "meal-prep", "one-pot"). Invent new ones freely.
+- Do not include recipe-level macro totals — they're derived from the ingredient list.
+- Do not include per-serving amounts — FuelLog divides totals by servings automatically.
+- If the recipe has no web source, set "url": "".</pre>
+
+<div class="rules">
+  <h2>Quick reference</h2>
+  <ul>
+    <li><b>Units:</b> <code>each</code>, <code>oz</code>, <code>lb</code>, <code>g</code>, <code>cup</code>, <code>tbsp</code>, <code>tsp</code>, <code>ml</code>, <code>serving</code></li>
+    <li><b>Courses:</b> <code>breakfast</code>, <code>main</code>, <code>side</code>, <code>snack</code>, <code>dessert</code>, <code>none</code></li>
+    <li><b>Ingredient macros are TOTALS</b> for the qty — FuelLog converts to per-unit internally.</li>
+    <li><b>Wrap in <code>[ ]</code></b> even for one recipe.</li>
+  </ul>
+</div>
+
+<footer>
+  <a href="./">← Back to FuelLog</a>
+</footer>
+</div>
+
+<script>
+const btn=document.getElementById('copyBtn');
+const pre=document.getElementById('prompt');
+btn.addEventListener('click',async()=>{
+  const txt=pre.textContent;
+  try{
+    await navigator.clipboard.writeText(txt);
+    btn.textContent='✓ Copied — paste it into your chat';
+    btn.classList.add('done');
+  }catch(err){
+    // Fallback: select the text so the user can tap Copy
+    const r=document.createRange();r.selectNodeContents(pre);
+    const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+    btn.textContent='Text selected — tap Copy on the highlighted area';
+    btn.classList.add('done');
+  }
+  setTimeout(()=>{btn.textContent='Copy prompt to clipboard';btn.classList.remove('done');},4000);
+});
+</script>
+</body>
+</html>
