@@ -972,6 +972,11 @@ let foodLibrary=J('fl_foods',[]);
 // ══ INGREDIENT LIBRARY ══
 // Each entry stores macros PER 1 unit (per oz, per tbsp, per each, etc.)
 // so logging a different qty later is pure math — no AI call needed.
+//
+// TODO (later): proper cross-unit conversion. Store gramsPerUnit on each
+// ingredient so "chicken breast: 1 lb = 453g, 1 cup diced = 140g" lets us
+// convert freely between units without per-(name,unit) library entries.
+// Revisit once daily use confirms this is worth the implementation time.
 const INGREDIENT_UNITS=['each','oz','lb','g','cup','tbsp','tsp','ml','serving'];
 const ING_NUTRIENT_KEYS=['cal','prot','carbs','fat','fiber','vita','iron','sugar','sodium'];
 const INGREDIENT_SEED=[
@@ -1681,13 +1686,30 @@ function renderIngredientPicker(){
   const el=document.getElementById('ing-picker-results');
   if(!list.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 0">No saved ingredients match — add one below.</div>';return;}
   el.innerHTML=list.map(i=>`
-    <div onclick="addRecipeIngredientFromLibrary(${i.id})" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 11px">
-      <div style="min-width:0;flex:1">
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 11px">
+      <div style="min-width:0;flex:1;cursor:pointer" onclick="addRecipeIngredientFromLibrary(${i.id})">
         <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.name}</div>
         <div style="font-size:10px;color:var(--muted)">${i.cal} cal · ${i.prot}g P · ${i.carbs}g C · ${i.fat}g F <span style="color:var(--muted2)">per ${i.unit}</span></div>
       </div>
-      <span style="font-size:10px;color:var(--lime);border:1px solid var(--lime);border-radius:6px;padding:2px 8px;flex-shrink:0">Add</span>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <button onclick="useIngredientInOtherUnit(${i.id})" title="Add in a different unit (¾ cup, 1 tbsp, etc.)" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 7px;font-size:10px;cursor:pointer">↔ unit</button>
+        <span onclick="addRecipeIngredientFromLibrary(${i.id})" style="font-size:10px;color:var(--lime);border:1px solid var(--lime);border-radius:6px;padding:2px 8px;cursor:pointer">Add</span>
+      </div>
     </div>`).join('');
+}
+function useIngredientInOtherUnit(id){
+  const it=ingredientLibrary.find(x=>x.id===id);if(!it)return;
+  document.getElementById('ing-new-name').value=it.name;
+  // Default to a different unit than what's already stored so the user is nudged to pick one.
+  const sel=document.getElementById('ing-new-unit');
+  const alt=INGREDIENT_UNITS.find(u=>u!==it.unit)||'serving';
+  sel.value=alt;
+  // Clear macro fields so the user or AI fills them fresh for the new unit.
+  ING_NUTRIENT_KEYS.forEach(k=>{const e=document.getElementById('ing-new-'+k);if(e)e.value='';});
+  toast(`Pick a unit, then tap ✨ AI Estimate`);
+  // Scroll the new-ingredient form into view.
+  document.getElementById('ing-new-name').scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>sel.focus(),350);
 }
 function saveNewIngredient(){
   const name=document.getElementById('ing-new-name').value.trim();
