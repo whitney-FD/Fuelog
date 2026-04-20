@@ -102,7 +102,12 @@ Copy-paste this into your recipe chat so it returns data in the right shape:
 >   "course": "breakfast|main|side|snack|dessert|none",
 >   "cats": ["tag1","tag2"],
 >   "ingredients": [
->     {"name":"chicken breast","qty":2,"unit":"lb","cal":<total>,"prot":<g>,"carbs":<g>,"fat":<g>,"fiber":<g>}
+>     {
+>       "name": "chicken breast (raw)",
+>       "qty": 2, "unit": "lb",
+>       "cal": <total kcal>, "prot": <g>, "carbs": <g>, "fat": <g>, "fiber": <g>,
+>       "vita": <% daily value>, "iron": <mg>, "sugar": <g>, "sodium": <mg>
+>     }
 >   ],
 >   "directions": "step 1...\nstep 2...",
 >   "url": "source link or empty string"
@@ -110,8 +115,8 @@ Copy-paste this into your recipe chat so it returns data in the right shape:
 > ```
 >
 > Rules:
-> - Use the `ingredients` array — FuelLog auto-computes recipe totals from it.
-> - For each ingredient, macros are TOTALS for the qty you list (not per unit).
+> - Use the `ingredients` array — FuelLog auto-computes recipe totals from it and auto-saves each ingredient to my library for reuse.
+> - For each ingredient, macro + micro values are TOTALS for the qty you list (not per unit).
 > - Allowed units: `each`, `oz`, `lb`, `g`, `cup`, `tbsp`, `tsp`, `ml`, `serving`.
-> - Use USDA FoodData Central values. Leave optional fields out if unknown rather than guessing.
-> - Do not include per-serving amounts. Recipe-level totals are derived.
+> - Use USDA FoodData Central values. `vita` = Vitamin A as % daily value; `iron` in mg; `sodium` in mg; all else in grams. Leave optional micros out if unknown rather than guessing.
+> - Do not include per-serving amounts. Recipe-level totals are derived from the ingredient list.
