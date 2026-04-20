@@ -1555,15 +1555,23 @@ async function toggleScan(){
 }
 async function startScan(){
   try{
-    codeReader=new ZXing.BrowserBarcodeReader();
+    // BrowserMultiFormatReader reads UPC-A/E, EAN-8/13, Code128, QR, and more —
+    // far better food-product coverage than the old BrowserBarcodeReader.
+    codeReader=new ZXing.BrowserMultiFormatReader();
     document.getElementById('scan-status').textContent='Starting camera...';
-    await codeReader.decodeFromVideoDevice(null,'scan-video',async(res)=>{
-      if(res){
-        const code=res.text;
-        stopScan();document.getElementById('scan-wrap').classList.remove('open');scannerOn=false;
-        await lookupBarcode(code);
+    // Force the back ("environment") camera so users point their phone at a
+    // barcode and it actually sees it (default picked the front camera).
+    await codeReader.decodeFromConstraints(
+      {video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}},
+      'scan-video',
+      async(res,err)=>{
+        if(res){
+          const code=res.getText?res.getText():res.text;
+          stopScan();document.getElementById('scan-wrap').classList.remove('open');scannerOn=false;
+          await lookupBarcode(code);
+        }
       }
-    });
+    );
     document.getElementById('scan-status').textContent='Point camera at barcode';
   }catch(e){document.getElementById('scan-status').textContent='Camera error: '+e.message}
 }
@@ -3090,17 +3098,21 @@ function openSuppScan(){
 
 async function startSuppScan(){
   try{
-    suppCodeReader=new ZXing.BrowserBarcodeReader();
+    suppCodeReader=new ZXing.BrowserMultiFormatReader();
     document.getElementById('supp-scan-status').textContent='Starting camera...';
-    await suppCodeReader.decodeFromVideoDevice(null,'supp-scan-video',async(res)=>{
-      if(res){
-        const code=res.text;
-        stopSuppScan();
-        document.getElementById('supp-scan-wrap').classList.remove('open');
-        suppScannerOn=false;
-        await lookupSuppBarcode(code);
+    await suppCodeReader.decodeFromConstraints(
+      {video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}},
+      'supp-scan-video',
+      async(res,err)=>{
+        if(res){
+          const code=res.getText?res.getText():res.text;
+          stopSuppScan();
+          document.getElementById('supp-scan-wrap').classList.remove('open');
+          suppScannerOn=false;
+          await lookupSuppBarcode(code);
+        }
       }
-    });
+    );
     document.getElementById('supp-scan-status').textContent='Point camera at supplement barcode';
   }catch(e){
     document.getElementById('supp-scan-status').textContent='Camera error: '+e.message;
