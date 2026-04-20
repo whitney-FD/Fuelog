@@ -721,12 +721,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="field-lbl">Source URL (optional)</div>
     <input class="field-input" type="url" id="rm-url" placeholder="https://..." style="margin-bottom:8px">
 
+    <div class="field-lbl">Ingredients (auto-calc macros)</div>
+    <div id="rm-ing-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn-sm" style="flex:1" onclick="openIngredientPicker()">+ Add Ingredient</button>
+    </div>
+    <div id="rm-ing-totals" style="font-size:11px;color:var(--muted);margin-bottom:10px;display:none"></div>
+
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
       <button class="btn-sm" onclick="aiEstimateRecipe()" id="rm-ai-btn">✨ AI Estimate Macros</button>
       <span style="font-size:11px;color:var(--muted)">or fill manually:</span>
     </div>
 
-    <div class="field-lbl">Total Batch Macros</div>
+    <div class="field-lbl">Total Batch Macros <span id="rm-auto-note" style="font-size:10px;color:var(--muted);font-weight:400;display:none">— auto-filled from ingredients</span></div>
     <div class="macro-grid">
       <div class="macro-field"><label>Calories (total)</label><input type="number" id="rm-cal" placeholder="0" oninput="updatePerServing()"></div>
       <div class="macro-field"><label>Protein g</label><input type="number" id="rm-prot" placeholder="0" oninput="updatePerServing()"></div>
@@ -738,6 +745,42 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div id="rm-per-serving" style="display:none" class="computed-macros"></div>
     <button class="btn-full" id="rm-save-btn" onclick="saveRecipe()">Save Recipe</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-recipe')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: INGREDIENT PICKER -->
+<div class="overlay" id="overlay-ing-pick" onclick="closeOverlay('overlay-ing-pick')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Ingredient</div>
+    <div class="field-lbl">Search your ingredients</div>
+    <input class="field-input" type="text" id="ing-search" placeholder="Type to search (e.g. chicken, oats, butter)..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="renderIngredientPicker()">
+    <div id="ing-picker-results" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;margin-bottom:10px"></div>
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+      <div class="field-lbl">Not in library? Add a new ingredient</div>
+      <input class="field-input" type="text" id="ing-new-name" placeholder="Ingredient name (e.g. sweet potato)" autocapitalize="none">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <label style="font-size:11px;color:var(--muted);flex-shrink:0">Unit:</label>
+        <select class="field-input" id="ing-new-unit" style="margin-bottom:0;flex:1">
+          <option value="each">each</option><option value="oz" selected>oz</option><option value="lb">lb</option>
+          <option value="g">g</option><option value="cup">cup</option><option value="tbsp">tbsp</option>
+          <option value="tsp">tsp</option><option value="ml">ml</option><option value="serving">serving</option>
+        </select>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Macros per 1 unit above</div>
+      <div class="macro-grid">
+        <div class="macro-field"><label>Cal / unit</label><input type="number" id="ing-new-cal" placeholder="0" step="any"></div>
+        <div class="macro-field"><label>Protein g</label><input type="number" id="ing-new-prot" placeholder="0" step="any"></div>
+        <div class="macro-field"><label>Carbs g</label><input type="number" id="ing-new-carbs" placeholder="0" step="any"></div>
+        <div class="macro-field"><label>Fat g</label><input type="number" id="ing-new-fat" placeholder="0" step="any"></div>
+        <div class="macro-field"><label>Fiber g</label><input type="number" id="ing-new-fiber" placeholder="0" step="any"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-sm" style="flex:1" onclick="aiEstimateIngredient()">✨ AI Estimate</button>
+        <button class="btn-sm" style="flex:1;background:var(--lime);color:#000;border-color:var(--lime)" onclick="saveNewIngredient()">Save & Add</button>
+      </div>
+    </div>
+    <button class="btn-full secondary" style="margin-top:12px" onclick="closeOverlay('overlay-ing-pick')">Cancel</button>
   </div>
 </div>
 
@@ -921,6 +964,59 @@ let entries=J('fl_e_'+getActiveDayKey(),[]);
 let savedMeals=J('fl_saved',[]);
 let recipes=J('fl_recipes',[]);
 let foodLibrary=J('fl_foods',[]);
+
+// ══ INGREDIENT LIBRARY ══
+// Each entry stores macros PER 1 unit (per oz, per tbsp, per each, etc.)
+// so logging a different qty later is pure math — no AI call needed.
+const INGREDIENT_UNITS=['each','oz','lb','g','cup','tbsp','tsp','ml','serving'];
+const INGREDIENT_SEED=[
+  {name:'egg (large)',unit:'each',cal:72,prot:6,carbs:0.4,fat:5,fiber:0},
+  {name:'chicken breast (raw)',unit:'oz',cal:31,prot:6.5,carbs:0,fat:0.4,fiber:0},
+  {name:'chicken thigh (raw, boneless)',unit:'oz',cal:50,prot:6.4,carbs:0,fat:2.6,fiber:0},
+  {name:'ground beef 85/15 (raw)',unit:'oz',cal:60,prot:6.4,carbs:0,fat:3.5,fiber:0},
+  {name:'white rice (cooked)',unit:'cup',cal:205,prot:4.3,carbs:45,fat:0.4,fiber:0.6},
+  {name:'brown rice (cooked)',unit:'cup',cal:216,prot:5,carbs:45,fat:1.8,fiber:3.5},
+  {name:'rolled oats (dry)',unit:'cup',cal:307,prot:11,carbs:55,fat:5.3,fiber:8.2},
+  {name:'butter',unit:'tbsp',cal:102,prot:0.1,carbs:0,fat:11.5,fiber:0},
+  {name:'olive oil',unit:'tbsp',cal:119,prot:0,carbs:0,fat:13.5,fiber:0},
+  {name:'broccoli (raw)',unit:'cup',cal:31,prot:2.6,carbs:6,fat:0.3,fiber:2.4},
+  {name:'spinach (raw)',unit:'cup',cal:7,prot:0.9,carbs:1,fat:0.1,fiber:0.7},
+  {name:'banana (medium)',unit:'each',cal:105,prot:1.3,carbs:27,fat:0.4,fiber:3.1},
+  {name:'milk 2%',unit:'cup',cal:122,prot:8,carbs:12,fat:4.8,fiber:0},
+  {name:'greek yogurt (plain, nonfat)',unit:'cup',cal:133,prot:23,carbs:9,fat:0.7,fiber:0},
+  {name:'almonds',unit:'oz',cal:164,prot:6,carbs:6,fat:14,fiber:3.5},
+];
+let ingredientLibrary=J('fl_ingredients',null);
+if(!Array.isArray(ingredientLibrary)){
+  ingredientLibrary=INGREDIENT_SEED.map((x,i)=>({id:Date.now()+i,...x,count:0,lastUsed:0}));
+  S('fl_ingredients',ingredientLibrary);
+}
+function searchIngredients(q,limit=8){
+  const ql=String(q||'').trim().toLowerCase();
+  if(!ql)return ingredientLibrary.slice().sort((a,b)=>(b.count||0)-(a.count||0)).slice(0,limit);
+  return ingredientLibrary
+    .filter(i=>i&&typeof i.name==='string'&&i.name.toLowerCase().includes(ql))
+    .sort((a,b)=>(b.count||0)-(a.count||0))
+    .slice(0,limit);
+}
+function findOrCreateIngredient(name,unit,macros){
+  const key=String(name||'').trim().toLowerCase();
+  if(!key)return null;
+  let hit=ingredientLibrary.find(i=>i.name.toLowerCase()===key&&(i.unit||'').toLowerCase()===String(unit||'').toLowerCase());
+  if(hit){hit.count=(hit.count||0)+1;hit.lastUsed=Date.now();S('fl_ingredients',ingredientLibrary);return hit;}
+  const entry={id:Date.now()+Math.random(),name:String(name).trim(),unit:unit||'serving',
+    cal:+(macros&&macros.cal)||0,prot:+(macros&&macros.prot)||0,carbs:+(macros&&macros.carbs)||0,
+    fat:+(macros&&macros.fat)||0,fiber:+(macros&&macros.fiber)||0,count:1,lastUsed:Date.now()};
+  ingredientLibrary.push(entry);
+  S('fl_ingredients',ingredientLibrary);
+  return entry;
+}
+function computeIngredientTotals(list){
+  return (list||[]).reduce((a,i)=>{
+    const q=+i.qty||0;
+    return{cal:a.cal+q*(+i.cal||0),prot:a.prot+q*(+i.prot||0),carbs:a.carbs+q*(+i.carbs||0),fat:a.fat+q*(+i.fat||0),fiber:a.fiber+q*(+i.fiber||0)};
+  },{cal:0,prot:0,carbs:0,fat:0,fiber:0});
+}
 let goals=J('fl_goals',{cal:1600,prot:135,carbs:160,fat:58,fiber:25,vita:100,name:'',tdee:1950,t_breakfast:'12:00',t_lunch:'14:00',t_dinner:'19:00',apiKey:''});
 let activeSlot='all';
 let recipeView='course';
@@ -1506,8 +1602,101 @@ function openNewRecipeModal(){
   document.querySelectorAll('#rm-course-tags .tag-opt').forEach(t=>t.classList.remove('selected'));
   document.querySelectorAll('#rm-cat-tags .tag-opt').forEach(t=>t.classList.remove('selected'));
   rmSelectedCourse='none';rmSelectedCats=[];recipePhotoData=null;tweakBaseId=null;
+  rmIngredients=[];renderRecipeIngredientList();
   document.getElementById('rm-photo-wrap').innerHTML='<div class="recipe-photo-placeholder"><div>📷</div><div>Tap to add photo</div></div>';
   openOverlay('overlay-recipe');
+}
+
+// ══ RECIPE INGREDIENT EDITOR ══
+let rmIngredients=[];
+function renderRecipeIngredientList(){
+  const el=document.getElementById('rm-ing-list');if(!el)return;
+  if(!rmIngredients.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 0">No ingredients yet. Tap "+ Add Ingredient" — macros will auto-calculate.</div>';document.getElementById('rm-ing-totals').style.display='none';document.getElementById('rm-auto-note').style.display='none';return;}
+  el.innerHTML=rmIngredients.map((ing,i)=>`
+    <div style="display:flex;gap:6px;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:8px">
+      <input type="number" step="any" value="${ing.qty}" onchange="updateRecipeIngredientQty(${i},this.value)" style="width:58px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 6px;color:var(--text);font-family:inherit;font-size:13px;text-align:right">
+      <span style="font-size:11px;color:var(--muted);flex-shrink:0;min-width:32px">${ing.unit}</span>
+      <div style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ing.name}</div>
+      <span style="font-size:10px;color:var(--muted);flex-shrink:0">${Math.round((+ing.qty||0)*(+ing.cal||0))} cal</span>
+      <button onclick="removeRecipeIngredient(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px">✕</button>
+    </div>`).join('');
+  const t=computeIngredientTotals(rmIngredients);
+  const srv=+document.getElementById('rm-servings').value||1;
+  document.getElementById('rm-ing-totals').style.display='block';
+  document.getElementById('rm-ing-totals').innerHTML=`Total: <b style="color:var(--lime)">${Math.round(t.cal)}</b> cal · <b>${Math.round(t.prot*10)/10}g</b> P · <b>${Math.round(t.carbs*10)/10}g</b> C · <b>${Math.round(t.fat*10)/10}g</b> F · <b>${Math.round(t.fiber*10)/10}g</b> fiber &nbsp;·&nbsp; per serving: ${Math.round(t.cal/srv)} cal`;
+  // Auto-fill the totals inputs
+  document.getElementById('rm-cal').value=Math.round(t.cal);
+  document.getElementById('rm-prot').value=Math.round(t.prot*10)/10;
+  document.getElementById('rm-carbs').value=Math.round(t.carbs*10)/10;
+  document.getElementById('rm-fat').value=Math.round(t.fat*10)/10;
+  document.getElementById('rm-fiber').value=Math.round(t.fiber*10)/10;
+  document.getElementById('rm-auto-note').style.display='inline';
+  updatePerServing();
+}
+function updateRecipeIngredientQty(i,v){rmIngredients[i].qty=+v||0;renderRecipeIngredientList();}
+function removeRecipeIngredient(i){rmIngredients.splice(i,1);renderRecipeIngredientList();}
+function addRecipeIngredientFromLibrary(id){
+  const it=ingredientLibrary.find(x=>x.id===id);if(!it)return;
+  it.count=(it.count||0)+1;it.lastUsed=Date.now();S('fl_ingredients',ingredientLibrary);
+  rmIngredients.push({name:it.name,unit:it.unit,qty:1,cal:+it.cal||0,prot:+it.prot||0,carbs:+it.carbs||0,fat:+it.fat||0,fiber:+it.fiber||0});
+  closeOverlay('overlay-ing-pick');
+  renderRecipeIngredientList();
+}
+
+function openIngredientPicker(){
+  document.getElementById('ing-search').value='';
+  ['ing-new-name','ing-new-cal','ing-new-prot','ing-new-carbs','ing-new-fat','ing-new-fiber'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  renderIngredientPicker();
+  openOverlay('overlay-ing-pick');
+  setTimeout(()=>{const s=document.getElementById('ing-search');if(s)s.focus();},120);
+}
+function renderIngredientPicker(){
+  const q=document.getElementById('ing-search').value;
+  const list=searchIngredients(q);
+  const el=document.getElementById('ing-picker-results');
+  if(!list.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 0">No saved ingredients match — add one below.</div>';return;}
+  el.innerHTML=list.map(i=>`
+    <div onclick="addRecipeIngredientFromLibrary(${i.id})" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 11px">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${i.cal} cal · ${i.prot}g P · ${i.carbs}g C · ${i.fat}g F <span style="color:var(--muted2)">per ${i.unit}</span></div>
+      </div>
+      <span style="font-size:10px;color:var(--lime);border:1px solid var(--lime);border-radius:6px;padding:2px 8px;flex-shrink:0">Add</span>
+    </div>`).join('');
+}
+function saveNewIngredient(){
+  const name=document.getElementById('ing-new-name').value.trim();
+  const unit=document.getElementById('ing-new-unit').value||'serving';
+  if(!name){toast('Name required');return;}
+  const macros={cal:+document.getElementById('ing-new-cal').value||0,prot:+document.getElementById('ing-new-prot').value||0,carbs:+document.getElementById('ing-new-carbs').value||0,fat:+document.getElementById('ing-new-fat').value||0,fiber:+document.getElementById('ing-new-fiber').value||0};
+  const it=findOrCreateIngredient(name,unit,macros);
+  if(!it)return;
+  rmIngredients.push({name:it.name,unit:it.unit,qty:1,cal:it.cal,prot:it.prot,carbs:it.carbs,fat:it.fat,fiber:it.fiber});
+  closeOverlay('overlay-ing-pick');
+  renderRecipeIngredientList();
+  toast('Ingredient saved & added');
+}
+async function aiEstimateIngredient(){
+  const name=document.getElementById('ing-new-name').value.trim();
+  const unit=document.getElementById('ing-new-unit').value||'serving';
+  if(!name){toast('Enter a name first');return;}
+  if(!goals.apiKey||!goals.apiKey.startsWith('sk-ant')){toast('Add API key in Goals tab');return;}
+  const btn=event&&event.target;if(btn){btn.disabled=true;btn.textContent='Estimating…';}
+  try{
+    const txt=await callClaude(
+      `Return ONLY a JSON object with macros for 1 ${unit} of the food. Shape: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n}. Use USDA FoodData Central values. No markdown.`,
+      `1 ${unit} of ${name}`
+    );
+    const clean=txt.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'').trim();
+    const m=JSON.parse(clean.slice(clean.indexOf('{'),clean.lastIndexOf('}')+1));
+    document.getElementById('ing-new-cal').value=m.cal||0;
+    document.getElementById('ing-new-prot').value=m.prot||0;
+    document.getElementById('ing-new-carbs').value=m.carbs||0;
+    document.getElementById('ing-new-fat').value=m.fat||0;
+    document.getElementById('ing-new-fiber').value=m.fiber||0;
+    toast('Estimated — review & tap Save');
+  }catch(e){toast('AI error: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='✨ AI Estimate';}}
 }
 
 function handleRecipePhoto(e){
@@ -1579,6 +1768,7 @@ function saveRecipe(){
     fiber:+document.getElementById('rm-fiber').value||0,vita:+document.getElementById('rm-vita').value||0,
     sugar:+document.getElementById('rm-sugar')?.value||0,sodium:+document.getElementById('rm-sodium')?.value||0,iron:+document.getElementById('rm-iron')?.value||0,
     course:rmSelectedCourse||'none',cats:rmSelectedCats||[],
+    ingredients:rmIngredients.slice(),
     photo:recipePhotoData||null,favorite:false,
     baseId:tweakBaseId||null,created:Date.now()
   };
@@ -2210,19 +2400,45 @@ function doBulkImport(){
         const rname=typeof r.name==='string'?r.name:(r.name!=null?String(r.name):'');
         if(!rname){skipped++;return;}
         if(existingNames.has(rname.toLowerCase())){skipped++;return;}
-        const _cal=+(r.cal||r.calories||r.kcal||0)||0;
-        const _prot=+(r.prot||r.protein||r.proteins||0)||0;
-        const _carbs=+(r.carbs||r.carbohydrates||r.carb||0)||0;
-        const _fat=+(r.fat||r.fats||r.lipids||0)||0;
-        const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0)||0;
-        const _notes=r.notes||r.ingredients||r.description||'';
+        // Structured ingredients array?  (name/qty/unit/cal/prot/carbs/fat/fiber per ingredient; cal etc. = totals for that qty)
+        let _ings=[];
+        if(Array.isArray(r.ingredients)){
+          _ings=r.ingredients.map(ing=>{
+            if(!ing||typeof ing!=='object')return null;
+            const iname=String(ing.name||'').trim();if(!iname)return null;
+            const iqty=+(ing.qty||ing.quantity||ing.amount||1)||1;
+            const iunit=String(ing.unit||'serving').toLowerCase();
+            const perUnit=(ing.cal_per_unit!=null||ing.per_unit)?1:iqty;
+            const cal=(+(ing.cal_per_unit||(ing.per_unit&&ing.per_unit.cal)||ing.cal||ing.calories||0)||0)/perUnit;
+            const prot=(+(ing.prot_per_unit||(ing.per_unit&&ing.per_unit.prot)||ing.prot||ing.protein||0)||0)/perUnit;
+            const carbs=(+(ing.carbs_per_unit||(ing.per_unit&&ing.per_unit.carbs)||ing.carbs||0)||0)/perUnit;
+            const fat=(+(ing.fat_per_unit||(ing.per_unit&&ing.per_unit.fat)||ing.fat||0)||0)/perUnit;
+            const fiber=(+(ing.fiber_per_unit||(ing.per_unit&&ing.per_unit.fiber)||ing.fiber||0)||0)/perUnit;
+            // Also register in the library for reuse
+            findOrCreateIngredient(iname,iunit,{cal,prot,carbs,fat,fiber});
+            return{name:iname,unit:iunit,qty:iqty,cal,prot,carbs,fat,fiber};
+          }).filter(Boolean);
+        }
+        // Compute totals from ingredients when available, otherwise take what's on the recipe.
+        let _cal,_prot,_carbs,_fat,_fiber;
+        if(_ings.length){
+          const t=computeIngredientTotals(_ings);
+          _cal=t.cal;_prot=t.prot;_carbs=t.carbs;_fat=t.fat;_fiber=t.fiber;
+        }else{
+          _cal=+(r.cal||r.calories||r.kcal||0)||0;
+          _prot=+(r.prot||r.protein||r.proteins||0)||0;
+          _carbs=+(r.carbs||r.carbohydrates||r.carb||0)||0;
+          _fat=+(r.fat||r.fats||r.lipids||0)||0;
+          _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0)||0;
+        }
+        const _notes=r.notes||(typeof r.ingredients==='string'?r.ingredients:'')||r.description||'';
         let _course=r.course||'none';
         if(Array.isArray(_course))_course=_course[0]||'none';
         _course=String(_course).toLowerCase();
         if(!COURSES.includes(_course))_course='main';
         const rawCats=[...toArr(r.cats),...toArr(r.tags),...toArr(r.categories)];
         const _cats=[...new Set(rawCats.map(c=>String(c==null?'':c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
-        recipes.push({id:Date.now()+Math.random(),name:rname,servings:+(r.servings||1)||1,notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(+(r.vita||r.vitamin_a||0)||0),iron:Math.round((+(r.iron||0)||0)*10)/10,sodium:Math.round(+(r.sodium||0)||0),sugar:Math.round((+(r.sugar||0)||0)*10)/10,course:_course,cats:_cats,photo:null,favorite:false,baseId:null,created:Date.now()});
+        recipes.push({id:Date.now()+Math.random(),name:rname,servings:+(r.servings||1)||1,notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(+(r.vita||r.vitamin_a||0)||0),iron:Math.round((+(r.iron||0)||0)*10)/10,sodium:Math.round(+(r.sodium||0)||0),sugar:Math.round((+(r.sugar||0)||0)*10)/10,course:_course,cats:_cats,ingredients:_ings,photo:null,favorite:false,baseId:null,created:Date.now()});
         existingNames.add(rname.toLowerCase());
         added++;
       }catch(e){
@@ -2732,6 +2948,9 @@ function editRecipe(id){
   // Set photo
   recipePhotoData=r.photo||null;
   document.getElementById('rm-photo-wrap').innerHTML=r.photo?`<img src="${r.photo}">`:'<div class="recipe-photo-placeholder"><div>📷</div><div>Tap to add photo</div></div>';
+  // Load ingredients
+  rmIngredients=Array.isArray(r.ingredients)?r.ingredients.map(i=>({...i})):[];
+  renderRecipeIngredientList();
   // Store edit id
   tweakBaseId=null;
   document.getElementById('rm-save-btn').onclick=()=>updateRecipe(id);
@@ -2761,6 +2980,7 @@ function updateRecipe(id){
     iron:+document.getElementById('rm-iron')?.value||0,
     course:rmSelectedCourse||'none',
     cats:rmSelectedCats||[],
+    ingredients:rmIngredients.slice(),
     photo:recipePhotoData||null,
   };
   S('fl_recipes',recipes);
