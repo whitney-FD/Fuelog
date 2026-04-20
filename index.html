@@ -646,6 +646,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <input class="field-input" type="text" id="new-supp-name" placeholder="Supplement name" style="margin-bottom:0;flex:1">
       <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
     </div>
+    <button class="btn-full secondary" onclick="restoreDefaultSupps()" style="margin-top:8px">↺ Restore default supplements</button>
     <div class="goal-section-title">Tracked Nutrients</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Choose which extras show on your dashboard.</div>
     <div id="nutrient-toggles" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
@@ -1228,6 +1229,7 @@ function gotoScreen(name,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   btn.classList.add('active');
+  if(name==='today')render();
   if(name==='week')buildWeek();
   if(name==='recipes')renderRecipes();
 }
@@ -2521,6 +2523,14 @@ function addCustomSupp(){
   if(!name)return;
   supplements.push({id:'supp_'+Date.now(),name,cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true});
   S('fl_supps',supplements);nameEl.value='';renderSuppManager();renderSupps();toast(name+' added');
+}
+function restoreDefaultSupps(){
+  if(supplements.length&&!confirm('Merge the default supplements back in? Your existing ones will stay.'))return;
+  const have=new Set(supplements.map(s=>(s.name||'').toLowerCase()));
+  DEFAULT_SUPPS.forEach(d=>{if(!have.has((d.name||'').toLowerCase()))supplements.push({...d,id:'supp_'+Date.now()+Math.random()});});
+  S('fl_supps',supplements);
+  renderSuppManager();renderSupps();
+  toast('Defaults restored');
 }
 function openSuppSettings(){openOverlay('overlay-supp-settings');renderSuppManager();}
 
