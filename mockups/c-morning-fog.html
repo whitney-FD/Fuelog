@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FuelLog — Mockup C: Morning Fog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EFECE4;
+  --paper:#F6F3EB;
+  --card:#FFFFFF;
+  --ink:#1F2622;
+  --ink-soft:#4D544F;
+  --muted:#8A8E86;
+  --line:#DCD7CB;
+  --line2:#C8C2B3;
+  --forest:#2F4F3E;
+  --forest-deep:#1E3A2B;
+  --moss:#6F8C5F;
+  --peach:#E8A98B;
+  --coral:#D56F5A;
+  --shadow:0 4px 20px rgba(50,40,20,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+.display{font-family:'DM Serif Display',serif;letter-spacing:-.01em}
+
+.phone{max-width:440px;margin:16px auto;background:var(--bg);min-height:100vh;padding-bottom:96px}
+.banner{background:var(--forest);color:var(--bg);padding:10px 22px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;text-align:center}
+
+.hdr{padding:24px 22px 10px;display:flex;justify-content:space-between;align-items:flex-start}
+.hdr .kicker{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--moss);font-weight:700;margin-bottom:4px}
+.hdr h1{margin:0;font-size:34px;line-height:1.05;color:var(--forest-deep);font-weight:400}
+.hdr h1 em{color:var(--coral);font-style:italic}
+.streak{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 12px;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--forest);box-shadow:var(--shadow)}
+.streak .fire{font-size:13px}
+
+/* Hero — big soft number */
+.hero{margin:14px 22px 12px;background:var(--card);border-radius:26px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--line);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:-40px;right:-30px;width:180px;height:180px;background:radial-gradient(circle,rgba(232,169,139,.25),transparent 65%);pointer-events:none}
+.hero-k{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--moss);font-weight:700}
+.hero-row{display:flex;justify-content:space-between;align-items:flex-end;margin:10px 0 14px;position:relative}
+.hero-num{font-family:'DM Serif Display',serif;font-size:72px;line-height:.95;color:var(--forest-deep)}
+.hero-num span{font-size:20px;color:var(--muted);margin-left:6px;font-family:'Inter',sans-serif;font-weight:500}
+.hero-rem{text-align:right}
+.hero-rem .big{font-family:'DM Serif Display',serif;font-size:28px;color:var(--coral);line-height:1}
+.hero-rem .lab{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:4px;font-weight:600}
+.hero-track{height:6px;background:#EDE7D7;border-radius:99px;overflow:hidden;position:relative}
+.hero-track i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--moss),var(--forest));border-radius:99px}
+
+/* Macros — pill style */
+.macros{display:flex;gap:10px;margin:10px 22px}
+.mac{flex:1;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 12px;box-shadow:var(--shadow);text-align:center}
+.mac .k{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
+.mac .v{font-family:'DM Serif Display',serif;font-size:28px;line-height:1}
+.mac .g{font-size:11px;color:var(--ink-soft);margin-top:4px}
+.mac .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.mac.prot .v{color:var(--forest)}.mac.prot .dot{background:var(--forest)}
+.mac.carbs .v{color:#A3762A}.mac.carbs .dot{background:#C89A4B}
+.mac.fat .v{color:var(--coral)}.mac.fat .dot{background:var(--coral)}
+
+/* Motivational block */
+.motive{margin:18px 22px 10px;background:var(--forest-deep);color:var(--bg);border-radius:22px;padding:22px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.motive::before{content:'"';position:absolute;top:-10px;left:10px;font-family:'DM Serif Display',serif;font-size:120px;color:rgba(232,169,139,.15);line-height:1}
+.motive .tag{display:inline-block;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--peach);font-weight:700;margin-bottom:8px;position:relative}
+.motive p{margin:0;font-family:'DM Serif Display',serif;font-size:20px;line-height:1.35;position:relative}
+.motive p em{color:var(--peach);font-style:italic}
+
+/* Log */
+.log-card{margin:14px 22px;background:var(--card);border-radius:20px;padding:16px;border:1px solid var(--line);box-shadow:var(--shadow)}
+.log-card .k{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
+.log-card input{width:100%;border:1.5px solid var(--line);background:var(--paper);border-radius:14px;padding:12px 16px;font-family:inherit;font-size:14px;color:var(--ink);outline:none}
+.log-card input:focus{border-color:var(--moss)}
+.log-row{display:flex;gap:8px;margin-top:10px}
+.btn{border:none;border-radius:14px;padding:12px 18px;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.12em;text-transform:uppercase}
+.btn.primary{background:var(--forest);color:var(--bg);flex:1;box-shadow:0 4px 14px rgba(47,79,62,.2)}
+.btn.accent{background:var(--coral);color:#fff}
+.btn.ghost{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+
+/* meals */
+.section-h{display:flex;justify-content:space-between;align-items:baseline;margin:22px 22px 10px}
+.section-h h2{margin:0;font-family:'DM Serif Display',serif;font-size:24px;color:var(--forest-deep);font-weight:400}
+.section-h .count{font-size:11px;color:var(--moss);letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+.meal{margin:8px 22px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
+.meal .thumb{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#F5E6D8,#E8D4BF);display:grid;place-items:center;font-size:22px;flex-shrink:0;border:1px solid var(--line)}
+.meal .info{flex:1;min-width:0}
+.meal .name{font-weight:600;font-size:14px;color:var(--ink);margin-bottom:3px}
+.meal .macs{font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+.meal .cal{font-family:'DM Serif Display',serif;font-size:26px;color:var(--forest);text-align:right;line-height:1}
+.meal .cal small{display:block;font-family:'Inter',sans-serif;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:3px;font-weight:700}
+
+/* nav */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:rgba(246,243,235,.94);backdrop-filter:blur(22px);border-top:1px solid var(--line);display:flex;padding:10px 8px calc(12px + env(safe-area-inset-bottom,0px));z-index:50}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:6px 2px}
+.nav-btn.active{color:var(--forest-deep)}
+.nav-btn.active svg{stroke:var(--coral)}
+.nav-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="banner">Mockup C · Morning Fog · light + motivating</div>
+  <div class="hdr">
+    <div>
+      <div class="kicker">Sunday · April 20</div>
+      <h1 class="display">You're <em>doing it</em>.</h1>
+    </div>
+    <div class="streak"><span class="fire">🔥</span>12 day streak</div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-k">Today's fuel</div>
+    <div class="hero-row">
+      <div class="hero-num">992<span>/1,600</span></div>
+      <div class="hero-rem"><div class="big">608</div><div class="lab">Left today</div></div>
+    </div>
+    <div class="hero-track"><i></i></div>
+  </div>
+
+  <div class="macros">
+    <div class="mac prot"><div class="k"><span class="dot"></span>Protein</div><div class="v">105g</div><div class="g">30g left</div></div>
+    <div class="mac carbs"><div class="k"><span class="dot"></span>Carbs</div><div class="v">86g</div><div class="g">74g left</div></div>
+    <div class="mac fat"><div class="k"><span class="dot"></span>Fat</div><div class="v">23g</div><div class="g">35g left</div></div>
+  </div>
+
+  <div class="motive">
+    <div class="tag">Coach · Morning note</div>
+    <p>Strong choices already. Aim to <em>hit your protein by dinner</em> — you've got this.</p>
+  </div>
+
+  <div class="log-card">
+    <div class="k">Log something</div>
+    <input type="text" placeholder="Search your foods or describe a meal…">
+    <div class="log-row">
+      <button class="btn primary">Log</button>
+      <button class="btn accent">AI estimate</button>
+      <button class="btn ghost">📷</button>
+    </div>
+  </div>
+
+  <div class="section-h"><h2>Today's meals</h2><span class="count">3 logged</span></div>
+  <div class="meal"><div class="thumb">🥣</div><div class="info"><div class="name">Greek yogurt, berries, almonds</div><div class="macs">28g P · 22g C · 9g F · 1 bowl</div></div><div class="cal">310<small>kcal</small></div></div>
+  <div class="meal"><div class="thumb">🥗</div><div class="info"><div class="name">Chicken Caesar, no croutons</div><div class="macs">42g P · 12g C · 18g F · 1 plate</div></div><div class="cal">380<small>kcal</small></div></div>
+  <div class="meal"><div class="thumb">☕</div><div class="info"><div class="name">Oat milk latte</div><div class="macs">6g P · 18g C · 5g F · grande</div></div><div class="cal">150<small>kcal</small></div></div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6h-6v6H5a2 2 0 0 1-2-2z"/></svg>Today</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>Log</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z M8 4v16 M16 4v16"/></svg>Recipes</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>You</button>
+</nav>
+</body>
+</html>
