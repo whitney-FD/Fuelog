@@ -476,7 +476,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="scan-status" id="scan-status">Point camera at barcode</div>
     </div>
     <div class="search-wrap">
-      <input type="text" class="food-ta" id="food-ta" placeholder="Type to search your foods or describe a meal..." oninput="onFoodInput(event)" onkeydown="handleLogKey(event)" autocomplete="off">
+      <input type="text" class="food-ta" id="food-ta" placeholder="Type to search your foods or describe a meal..." oninput="onFoodInput(event)" onkeydown="handleLogKey(event)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
       <div class="search-results" id="search-results"></div>
     </div>
     <div class="input-row">
@@ -845,9 +845,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
        <input type="file" id="bulk-file-input" accept=".json,.txt,text/plain,application/json" style="display:none" onchange="loadBulkFile(this)">
      </div>
      <div class="field-lbl">JSON Array</div>
-    <textarea class="bulk-ta" id="bulk-json-ta" 
+    <textarea class="bulk-ta" id="bulk-json-ta"
       placeholder='[{"name":"Chicken Bowls","servings":8,"calories":2800,"protein":320,"carbs":240,"fat":60,"servings":8}]'
       oninput="document.getElementById('bulk-char-count').textContent=this.value.length+' chars pasted'"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       style="min-height:200px;font-size:12px"></textarea>
     <div id="bulk-char-count" style="font-size:11px;color:var(--muted);text-align:right;margin:-4px 0 8px">0 chars pasted</div>
     <div id="bulk-result" style="font-size:12px;color:var(--lime);margin-bottom:10px;min-height:16px"></div>
@@ -892,6 +893,22 @@ const SLOT_ICONS={breakfast:'🌅',lunch:'☀️',snack:'🍎',dinner:'🌙'};
 const COACH_URL='https://claude.ai/chat/10a6caeb-0cf3-4c56-9668-fd1b3ea4706f';
 const COURSES=['breakfast','main','side','snack','dessert','none'];
 const COURSE_LABELS={breakfast:'Breakfast',main:'Main Dish',side:'Side Dish',snack:'Snack',dessert:'Dessert',none:'No Course'};
+const COURSE_COLORS={breakfast:'#8B4513',main:'#722F37',side:'#2E8B57',snack:'#4B6584',dessert:'#C71585',none:'#444'};
+const CAT_COLORS={
+  chicken:'#8B4513',beef:'#722F37',pork:'#CD853F',fish:'#4682B4',
+  egg:'#DAA520',rice:'#6B8E23',pasta:'#D2691E',noodle:'#CD853F',
+  salad:'#228B22',soup:'#8B6914',vegetable:'#2E8B57',vegetarian:'#3CB371',
+  casserole:'#8B4513',sauce:'#B22222',bread:'#DEB887',cake:'#C71585',
+  cookie:'#A0522D',tart:'#8B0000',beans:'#8B6914',chili:'#B22222',
+  bowl:'#4B6584',default:'#2d2d35'
+};
+const CAT_EMOJI={
+  chicken:'🍗',beef:'🥩',pork:'🥓',fish:'🐟',egg:'🥚',rice:'🍚',
+  pasta:'🍝',noodle:'🍜',salad:'🥗',soup:'🍲',vegetable:'🥦',
+  vegetarian:'🌿',casserole:'🫕',sauce:'🍅',bread:'🍞',cake:'🎂',
+  cookie:'🍪',tart:'🥧',beans:'🫘',chili:'🌶️',bowl:'🥣',
+  breakfast:'🍳',main:'🍽️',side:'🥗',snack:'🍎',dessert:'🍰',none:'📋'
+};
 
 // ══ STATE ══
 const todayKey=new Date().toDateString();
@@ -1076,33 +1093,11 @@ function closeSearchResults(){
   document.getElementById('search-results').classList.remove('open');
 }
 
-async function doSearch(q){
-  const ql=q.toLowerCase();
+let searchSeq=0;
+function renderSearchResults(q,matchedRecipes,mine,offResults,offStatus){
   const res=document.getElementById('search-results');
-
-  // 0. Recipes matching query — show first
-  const matchedRecipes=recipes.filter(r=>r.name.toLowerCase().includes(ql)).slice(0,3);
-
-  // 1. My saved foods
-  const mine=foodLibrary.filter(f=>f.name.toLowerCase().includes(ql)).sort((a,b)=>(b.count||0)-(a.count||0)).slice(0,4);
-
-  // 2. Open Food Facts search
-  let offResults=[];
-  try{
-    const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=5&fields=product_name,brands,nutriments,serving_size`);
-    const d=await r.json();
-    if(d.products){
-      offResults=d.products.filter(p=>p.product_name).slice(0,5).map(p=>{
-        const n=p.nutriments||{};
-        const srvG=parseFloat(p.serving_size)||100;const ratio=srvG/100;
-        return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:p.serving_size||'100g',src:'off'};
-      });
-    }
-  }catch{}
-
+  if(!res)return;
   let html='';
-
-  // Recipe results first
   matchedRecipes.forEach(r=>{
     const srv=r.servings;
     html+=`<div class="sr-item" onclick="quickLogRecipe(${r.id})">
@@ -1113,7 +1108,6 @@ async function doSearch(q){
       <span class="sr-badge" style="background:rgba(212,245,60,.15);color:var(--lime);border:1px solid var(--lime)">Recipe</span>
     </div>`;
   });
-
   mine.forEach(f=>{
     html+=`<div class="sr-item" onclick="logFromLibrary(${JSON.stringify(f).replace(/"/g,'&quot;')})">
       <div><div class="sr-name">${f.name}</div><div class="sr-meta">${Math.round(f.cal)} cal · ${f.prot}g P</div></div>
@@ -1126,16 +1120,53 @@ async function doSearch(q){
       <span class="sr-badge">DB</span>
     </div>`;
   });
+  if(offStatus==='loading'){
+    html+=`<div class="sr-item"><div class="sr-name" style="color:var(--muted);font-size:11px">Searching database…</div></div>`;
+  }
   if(goals.apiKey&&goals.apiKey.startsWith('sk-ant')){
     html+=`<div class="sr-item" onclick="logFoodAI()">
-      <div><div class="sr-name" style="color:var(--lime)">✨ Ask AI: "${document.getElementById('food-ta').value}"</div><div class="sr-meta">Use Claude to estimate macros</div></div>
+      <div><div class="sr-name" style="color:var(--lime)">✨ Ask AI: "${q}"</div><div class="sr-meta">Use Claude to estimate macros</div></div>
     </div>`;
   }
   if(!html){
-    html=`<div class="sr-item"><div class="sr-name" style="color:var(--muted)">No matches — ${goals.apiKey?'tap AI Estimate below':'add API key in Goals to use AI'}</div></div>`;
+    html=`<div class="sr-item"><div class="sr-name" style="color:var(--muted)">No matches — ${goals.apiKey?'tap LOG to use AI':'add API key in Goals to use AI'}</div></div>`;
   }
   res.innerHTML=html;
   res.classList.add('open');
+}
+
+function doSearch(q){
+  const ql=q.toLowerCase();
+  const seq=++searchSeq;
+
+  const matchedRecipes=recipes.filter(r=>r&&typeof r.name==='string'&&r.name.toLowerCase().includes(ql)).slice(0,3);
+  const mine=foodLibrary.filter(f=>f&&typeof f.name==='string'&&f.name.toLowerCase().includes(ql)).sort((a,b)=>(b.count||0)-(a.count||0)).slice(0,4);
+
+  // Render local results immediately so the dropdown appears even with slow/no network.
+  renderSearchResults(q,matchedRecipes,mine,[],'loading');
+
+  const ctrl=typeof AbortController!=='undefined'?new AbortController():null;
+  const timeoutId=setTimeout(()=>{try{ctrl&&ctrl.abort();}catch{}},4000);
+  fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=5&fields=product_name,brands,nutriments,serving_size`,ctrl?{signal:ctrl.signal}:{})
+    .then(r=>r.json())
+    .then(d=>{
+      clearTimeout(timeoutId);
+      if(seq!==searchSeq)return;
+      let offResults=[];
+      if(d&&d.products){
+        offResults=d.products.filter(p=>p&&p.product_name).slice(0,5).map(p=>{
+          const n=p.nutriments||{};
+          const srvG=parseFloat(p.serving_size)||100;const ratio=srvG/100;
+          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:p.serving_size||'100g',src:'off'};
+        });
+      }
+      renderSearchResults(q,matchedRecipes,mine,offResults,'done');
+    })
+    .catch(()=>{
+      clearTimeout(timeoutId);
+      if(seq!==searchSeq)return;
+      renderSearchResults(q,matchedRecipes,mine,[],'done');
+    });
 }
 
 function logFromLibrary(f){
@@ -2169,29 +2200,44 @@ function doBulkImport(){
     raw=raw.slice(start,end+1);
     let arr=JSON.parse(raw);
     if(!Array.isArray(arr))arr=[arr];
-    const existingNames=new Set(recipes.map(r=>r.name.toLowerCase()));
-    let added=0,skipped=0;
-    arr.forEach(r=>{
-      if(!r.name){skipped++;return;}
-      if(existingNames.has(r.name.toLowerCase())){skipped++;return;}
-      const _cal=+(r.cal||r.calories||r.kcal||0);
-      const _prot=+(r.prot||r.protein||r.proteins||0);
-      const _carbs=+(r.carbs||r.carbohydrates||r.carb||0);
-      const _fat=+(r.fat||r.fats||r.lipids||0);
-      const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0);
-      const _notes=r.notes||r.ingredients||r.description||'';
-      let _course=r.course||'none';
-      if(Array.isArray(_course)){_course=_course[0]||'none';} _course=String(_course).toLowerCase(); if(!['breakfast','main','side','snack','dessert','none'].includes(_course))_course='main';
-      const _cats=[...new Set([...(r.cats||[]),...(r.tags||[]),...(r.categories||[])].map(c=>String(c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
-      recipes.push({id:Date.now()+Math.random(),name:r.name,servings:+(r.servings||1),notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(+(r.vita||r.vitamin_a||0)),iron:Math.round(+(r.iron||0)*10)/10,sodium:Math.round(+(r.sodium||0)),sugar:Math.round(+(r.sugar||0)*10)/10,course:_course,cats:_cats,photo:null,favorite:false,baseId:null,created:Date.now()});
-      existingNames.add(r.name.toLowerCase());
-      added++;
+    const toArr=v=>Array.isArray(v)?v:(v==null||v==='')?[]:(typeof v==='string'?v.split(/[,;]/):[v]);
+    const existingNames=new Set(recipes.filter(r=>r&&typeof r.name==='string').map(r=>r.name.toLowerCase()));
+    let added=0,skipped=0,errored=0;
+    const errMsgs=[];
+    arr.forEach((r,i)=>{
+      try{
+        if(!r||typeof r!=='object'){skipped++;return;}
+        const rname=typeof r.name==='string'?r.name:(r.name!=null?String(r.name):'');
+        if(!rname){skipped++;return;}
+        if(existingNames.has(rname.toLowerCase())){skipped++;return;}
+        const _cal=+(r.cal||r.calories||r.kcal||0)||0;
+        const _prot=+(r.prot||r.protein||r.proteins||0)||0;
+        const _carbs=+(r.carbs||r.carbohydrates||r.carb||0)||0;
+        const _fat=+(r.fat||r.fats||r.lipids||0)||0;
+        const _fiber=+(r.fiber||r.fibre||r.dietary_fiber||0)||0;
+        const _notes=r.notes||r.ingredients||r.description||'';
+        let _course=r.course||'none';
+        if(Array.isArray(_course))_course=_course[0]||'none';
+        _course=String(_course).toLowerCase();
+        if(!COURSES.includes(_course))_course='main';
+        const rawCats=[...toArr(r.cats),...toArr(r.tags),...toArr(r.categories)];
+        const _cats=[...new Set(rawCats.map(c=>String(c==null?'':c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
+        recipes.push({id:Date.now()+Math.random(),name:rname,servings:+(r.servings||1)||1,notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(+(r.vita||r.vitamin_a||0)||0),iron:Math.round((+(r.iron||0)||0)*10)/10,sodium:Math.round(+(r.sodium||0)||0),sugar:Math.round((+(r.sugar||0)||0)*10)/10,course:_course,cats:_cats,photo:null,favorite:false,baseId:null,created:Date.now()});
+        existingNames.add(rname.toLowerCase());
+        added++;
+      }catch(e){
+        errored++;
+        if(errMsgs.length<3)errMsgs.push(`#${i+1} ${r&&r.name?r.name:''}: ${e.message}`);
+      }
     });
     S('fl_recipes',recipes);
-    document.getElementById('bulk-result').textContent=`✓ Added ${added} recipes, skipped ${skipped} duplicates`;
-    document.getElementById('bulk-result').style.color='var(--lime)';
-    renderRecipes();
-    if(added>0){toast(`Imported ${added} recipes!`);closeOverlay('overlay-bulk');}
+    const resEl=document.getElementById('bulk-result');
+    let summary=`✓ Added ${added} recipes, skipped ${skipped} duplicates`;
+    if(errored)summary+=`, ${errored} failed`+(errMsgs.length?' ('+errMsgs.join('; ')+')':'');
+    resEl.textContent=summary;
+    resEl.style.color=errored?'var(--yellow)':'var(--lime)';
+    try{renderRecipes();}catch(e){resEl.textContent=summary+` · render error: ${e.message}`;}
+    if(added>0){toast(`Imported ${added} recipes!`);if(!errored)closeOverlay('overlay-bulk');}
   }catch(err){
     document.getElementById('bulk-result').textContent='Parse error: '+err.message;
     document.getElementById('bulk-result').style.color='var(--red)';
@@ -2814,23 +2860,6 @@ function deleteSelectedRecipes(){
 
 
 // ══ RECIPE TILE DISPLAY ══
-var CAT_COLORS={
-  chicken:'#8B4513',beef:'#722F37',pork:'#CD853F',fish:'#4682B4',
-  egg:'#DAA520',rice:'#6B8E23',pasta:'#D2691E',noodle:'#CD853F',
-  salad:'#228B22',soup:'#8B6914',vegetable:'#2E8B57',vegetarian:'#3CB371',
-  casserole:'#8B4513',sauce:'#B22222',bread:'#DEB887',cake:'#C71585',
-  cookie:'#A0522D',tart:'#8B0000',beans:'#8B6914',chili:'#B22222',
-  bowl:'#4B6584',default:'#2d2d35'
-};
-var CAT_EMOJI={
-  chicken:'🍗',beef:'🥩',pork:'🥓',fish:'🐟',egg:'🥚',rice:'🍚',
-  pasta:'🍝',noodle:'🍜',salad:'🥗',soup:'🍲',vegetable:'🥦',
-  vegetarian:'🌿',casserole:'🫕',sauce:'🍅',bread:'🍞',cake:'🎂',
-  cookie:'🍪',tart:'🥧',beans:'🫘',chili:'🌶️',bowl:'🥣',
-  breakfast:'🍳',main:'🍽️',side:'🥗',snack:'🍎',dessert:'🍰',none:'📋'
-};
-var COURSE_COLORS={breakfast:'#8B4513',main:'#722F37',side:'#2E8B57',snack:'#4B6584',dessert:'#C71585',none:'#444'};
-
 function getRecipeTileImg(recipe){
   if(recipe&&recipe.photo)return `<img src="${recipe.photo}" onerror="this.parentElement.innerHTML='<div class=\'recipe-tile-bg\'>${CAT_EMOJI[recipe.course]||'🍽️'}</div>'">`;
   return null;
