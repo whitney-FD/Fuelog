@@ -1139,6 +1139,8 @@ let recipeView='course';
 let recipeDrilldown=null; // null = grid view, else {type,key,label}
 let recipeFilter='all';
 let scannerOn=false,codeReader=null;
+let scanStream=null,scanRAF=null,scanDetector=null;
+let suppScanStream=null,suppScanRAF=null,suppScanDetector=null;
 let tweakBaseId=null,logRecipeId=null,editEntryId=null;
 let selectedCourse='none';
 let selectedCats=[];
@@ -1574,7 +1576,6 @@ async function toggleScan(){
   if(scannerOn){stopScan();wrap.classList.remove('open');scannerOn=false;}
   else{wrap.classList.add('open');scannerOn=true;startScan();}
 }
-let scanStream=null,scanRAF=null,scanDetector=null;
 async function startScan(){
   const statusEl=document.getElementById('scan-status');
   const videoEl=document.getElementById('scan-video');
@@ -3156,7 +3157,6 @@ function openSuppScan(){
   }
 }
 
-let suppScanStream=null,suppScanRAF=null,suppScanDetector=null;
 async function startSuppScan(){
   const statusEl=document.getElementById('supp-scan-status');
   const videoEl=document.getElementById('supp-scan-video');
