@@ -45,6 +45,10 @@ Pass an array on the recipe's `ingredients` field. FuelLog sums macros from thes
 | `carbs` | number | yes | Total carbs (g). |
 | `fat` | number | yes | Total fat (g). |
 | `fiber` | number | no | Total fiber (g). |
+| `vita` | number | no | Vitamin A as % daily value. Aliases: `vitamin_a`, `vit_a`. |
+| `iron` | number | no | Total iron (mg). |
+| `sugar` | number | no | Total sugar (g). |
+| `sodium` | number | no | Total sodium (mg). |
 
 > Give macros as **totals for the quantity used**, not per unit. Example: `{"name":"chicken breast","qty":2,"unit":"lb","cal":600,"prot":120,"carbs":0,"fat":12}` means 2 lb of chicken contributes 600 kcal / 120 g protein to the recipe.
 
