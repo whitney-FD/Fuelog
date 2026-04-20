@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FuelLog — Mockup B: Midnight Sage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121613;
+  --bg2:#161B17;
+  --card:#1C221D;
+  --card2:#232A24;
+  --ink:#EDE7D6;
+  --ink-soft:#B7B0A0;
+  --muted:#7D8279;
+  --line:#2A3128;
+  --line2:#3A4238;
+  --sage:#97B184;
+  --sage-deep:#6F8A5D;
+  --brass:#D4B171;
+  --brass-soft:#B99458;
+  --rose:#D98E7A;
+  --shadow:0 6px 22px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Manrope',sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+.display{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-.01em}
+
+.phone{max-width:440px;margin:16px auto;background:radial-gradient(120% 60% at 0% 0%,#1A211B 0%,var(--bg) 55%);min-height:100vh;padding-bottom:96px}
+.banner{background:var(--card);color:var(--brass);padding:10px 22px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;text-align:center;border-bottom:1px solid var(--line)}
+
+.hdr{padding:22px 22px 12px;display:flex;justify-content:space-between;align-items:flex-start}
+.hdr .kicker{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+.hdr h1{margin:0;font-size:28px;line-height:1.1;color:var(--ink);font-weight:500}
+.hdr h1 em{font-style:italic;color:var(--brass)}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--brass),var(--brass-soft));display:grid;place-items:center;color:#1C221D;font-weight:700;font-size:14px;box-shadow:var(--shadow)}
+
+/* hero ring */
+.hero{margin:16px 22px 10px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-40%;right:-20%;width:240px;height:240px;background:radial-gradient(circle,rgba(212,177,113,.08),transparent 60%);pointer-events:none}
+.ring-wrap{display:flex;align-items:center;gap:22px;position:relative}
+.ring{width:140px;height:140px;flex-shrink:0;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .lbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring .n{font-family:'Fraunces',serif;font-size:36px;line-height:1;color:var(--ink);font-weight:600}
+.ring .g{font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
+.hero-side{flex:1;min-width:0}
+.hero-side .lab{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hero-side .big{font-family:'Fraunces',serif;font-size:26px;color:var(--brass);margin:4px 0;font-weight:600}
+.hero-side .small{font-size:12px;color:var(--ink-soft);line-height:1.5}
+.hero-side .small b{color:var(--sage)}
+
+/* macros */
+.macros{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 22px}
+.mac{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.mac .k{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.mac .v{font-family:'Fraunces',serif;font-size:26px;line-height:1;margin:6px 0 4px;font-weight:600}
+.mac .g{font-size:11px;color:var(--ink-soft)}
+.mac .bar{height:3px;background:var(--line2);border-radius:99px;margin-top:10px;overflow:hidden}
+.mac .bar i{display:block;height:100%;border-radius:99px}
+.mac.prot .v{color:var(--sage)}.mac.prot i{background:var(--sage);width:78%}
+.mac.carbs .v{color:var(--brass)}.mac.carbs i{background:var(--brass);width:54%}
+.mac.fat .v{color:var(--rose)}.mac.fat i{background:var(--rose);width:40%}
+
+/* coach */
+.coach{margin:16px 22px 10px;background:linear-gradient(135deg,#1E2A22,#1A221D);border:1px solid var(--sage-deep);border-radius:18px;padding:18px 20px;box-shadow:var(--shadow)}
+.coach .tag{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.coach .dot{width:6px;height:6px;background:var(--sage);border-radius:50%}
+.coach .tag span{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--sage);font-weight:700}
+.coach p{margin:0;font-family:'Fraunces',serif;font-size:17px;line-height:1.4;color:var(--ink);font-weight:400}
+.coach p em{font-style:italic;color:var(--brass)}
+
+/* log */
+.log-card{margin:14px 22px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.log-card .k{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
+.log-card input{width:100%;border:1px solid var(--line2);background:var(--bg2);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--ink);outline:none}
+.log-card input:focus{border-color:var(--sage)}
+.log-card input::placeholder{color:var(--muted)}
+.log-row{display:flex;gap:8px;margin-top:10px}
+.btn{border:none;border-radius:12px;padding:12px 16px;font-family:'Manrope',sans-serif;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase}
+.btn.primary{background:var(--brass);color:#1C221D;flex:1;box-shadow:0 4px 14px rgba(212,177,113,.2)}
+.btn.ghost{background:var(--card2);color:var(--ink);border:1px solid var(--line2)}
+
+/* meal list */
+.section-h{display:flex;justify-content:space-between;align-items:baseline;margin:20px 22px 10px}
+.section-h h2{margin:0;font-family:'Fraunces',serif;font-size:22px;font-weight:500;color:var(--ink)}
+.section-h .count{font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.meal{margin:8px 22px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
+.meal .thumb{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#2A3328,#20271F);display:grid;place-items:center;font-size:20px;flex-shrink:0;border:1px solid var(--line2)}
+.meal .info{flex:1;min-width:0}
+.meal .name{font-weight:600;font-size:14px;color:var(--ink);margin-bottom:3px}
+.meal .macs{font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+.meal .cal{font-family:'Fraunces',serif;font-size:22px;color:var(--brass);font-weight:600;text-align:right}
+.meal .cal small{display:block;font-family:'Manrope',sans-serif;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:-2px}
+
+/* nav */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:rgba(18,22,19,.92);backdrop-filter:blur(22px);border-top:1px solid var(--line);display:flex;padding:10px 8px calc(12px + env(safe-area-inset-bottom,0px));z-index:50}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--muted);font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;padding:6px 2px}
+.nav-btn.active{color:var(--brass)}
+.nav-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="banner">Mockup B · Midnight Sage · dark + refined</div>
+  <div class="hdr">
+    <div>
+      <div class="kicker">Sunday · April 20</div>
+      <h1 class="display">Let's keep the <em>momentum</em>.</h1>
+    </div>
+    <div class="avatar">W</div>
+  </div>
+
+  <div class="hero">
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="60" stroke="#2A3128" stroke-width="10" fill="none"/>
+          <circle cx="70" cy="70" r="60" stroke="url(#g)" stroke-width="10" fill="none"
+            stroke-dasharray="376.99" stroke-dashoffset="143" stroke-linecap="round"/>
+          <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#D4B171"/><stop offset="100%" stop-color="#97B184"/>
+          </linearGradient></defs>
+        </svg>
+        <div class="lbl"><div class="n">992</div><div class="g">of 1,600</div></div>
+      </div>
+      <div class="hero-side">
+        <div class="lab">Remaining</div>
+        <div class="big">608 kcal</div>
+        <div class="small"><b>–412</b> under TDEE · on track for<br/>your weekly deficit goal.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="macros">
+    <div class="mac prot"><div class="k">Protein</div><div class="v">105g</div><div class="g">of 135g</div><div class="bar"><i></i></div></div>
+    <div class="mac carbs"><div class="k">Carbs</div><div class="v">86g</div><div class="g">of 160g</div><div class="bar"><i></i></div></div>
+    <div class="mac fat"><div class="k">Fat</div><div class="v">23g</div><div class="g">of 58g</div><div class="bar"><i></i></div></div>
+  </div>
+
+  <div class="coach">
+    <div class="tag"><span class="dot"></span><span>Coach</span></div>
+    <p>You're <em>light on fat</em> today. A handful of almonds or avocado at dinner keeps you full tonight and balanced tomorrow.</p>
+  </div>
+
+  <div class="log-card">
+    <div class="k">Log something</div>
+    <input type="text" placeholder="Search your foods or describe a meal…">
+    <div class="log-row">
+      <button class="btn primary">Log</button>
+      <button class="btn ghost">📷</button>
+      <button class="btn ghost">🎙</button>
+    </div>
+  </div>
+
+  <div class="section-h"><h2>Today's meals</h2><span class="count">3 entries</span></div>
+  <div class="meal"><div class="thumb">🥣</div><div class="info"><div class="name">Greek yogurt, berries, almonds</div><div class="macs">28g P · 22g C · 9g F · 1 bowl</div></div><div class="cal">310<small>kcal</small></div></div>
+  <div class="meal"><div class="thumb">🥗</div><div class="info"><div class="name">Chicken Caesar, no croutons</div><div class="macs">42g P · 12g C · 18g F · 1 plate</div></div><div class="cal">380<small>kcal</small></div></div>
+  <div class="meal"><div class="thumb">☕</div><div class="info"><div class="name">Oat milk latte</div><div class="macs">6g P · 18g C · 5g F · grande</div></div><div class="cal">150<small>kcal</small></div></div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6h-6v6H5a2 2 0 0 1-2-2z"/></svg>Today</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>Log</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z M8 4v16 M16 4v16"/></svg>Recipes</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>You</button>
+</nav>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FuelLog — Mockup A: Stone Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F2EA;
+  --paper:#FBF8F2;
+  --card:#FFFFFF;
+  --ink:#1E1D1A;
+  --ink-soft:#5A554C;
+  --muted:#9A938A;
+  --line:#E7DFD1;
+  --sage:#7A8871;
+  --sage-deep:#485C46;
+  --terra:#C4775A;
+  --gold:#B89768;
+  --shadow:0 2px 16px rgba(62,50,34,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+.display{font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-.01em}
+.phone{max-width:440px;margin:16px auto;background:var(--bg);min-height:100vh;padding-bottom:96px}
+.hdr{padding:22px 22px 12px;display:flex;justify-content:space-between;align-items:flex-start}
+.hdr .kicker{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+.hdr h1{margin:0;font-size:30px;line-height:1.05;color:var(--ink)}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#D4B896,#B89768);display:grid;place-items:center;color:#fff;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
+
+/* calorie hero */
+.hero{margin:14px 22px 10px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(120% 60% at 100% 0%,rgba(196,119,90,.08),transparent 60%);pointer-events:none}
+.hero-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;position:relative}
+.hero-lbl{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hero-rem{font-size:12px;color:var(--sage-deep);font-weight:500}
+.hero-num{display:flex;align-items:baseline;gap:10px;position:relative}
+.hero-num .n{font-family:'Cormorant Garamond',serif;font-size:64px;line-height:1;letter-spacing:-.02em;font-weight:600}
+.hero-num .g{font-size:14px;color:var(--ink-soft);font-weight:500}
+.hero-bar{height:6px;background:#EFE7D7;border-radius:99px;margin-top:18px;overflow:hidden}
+.hero-bar i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--sage),var(--sage-deep));border-radius:99px}
+.hero-sub{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+
+/* macros */
+.macros{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 22px}
+.mac{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+.mac .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.mac .v{font-family:'Cormorant Garamond',serif;font-size:26px;line-height:1;margin:6px 0 4px}
+.mac .g{font-size:11px;color:var(--ink-soft)}
+.mac .bar{height:3px;background:#EFE7D7;border-radius:99px;margin-top:10px;overflow:hidden}
+.mac .bar i{display:block;height:100%;border-radius:99px}
+.mac.prot .v{color:#4A6B8A}.mac.prot i{background:#6E8CA8;width:78%}
+.mac.carbs .v{color:#A07A3A}.mac.carbs i{background:#C4A160;width:54%}
+.mac.fat .v{color:var(--terra)}.mac.fat i{background:var(--terra);width:40%}
+
+/* coach */
+.coach{margin:16px 22px 10px;background:linear-gradient(135deg,#EAE2D1,#F5EDDC);border:1px solid #E0D2B5;border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);position:relative}
+.coach .tag{display:inline-block;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--sage-deep);font-weight:700;margin-bottom:8px}
+.coach p{margin:0;font-family:'Cormorant Garamond',serif;font-size:19px;line-height:1.35;color:var(--ink)}
+.coach p em{font-style:italic;color:var(--sage-deep)}
+
+/* input */
+.log-card{margin:14px 22px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.log-card .k{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+.log-card input{width:100%;border:1px solid var(--line);background:#FCF8F0;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--ink);outline:none}
+.log-card input:focus{border-color:var(--sage)}
+.log-row{display:flex;gap:8px;margin-top:10px}
+.btn{border:none;border-radius:12px;padding:12px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer}
+.btn.primary{background:var(--ink);color:#F7F2EA;flex:1;letter-spacing:.04em}
+.btn.ghost{background:#F2EADB;color:var(--ink)}
+
+/* meal list */
+.section-h{display:flex;justify-content:space-between;align-items:baseline;margin:18px 22px 8px}
+.section-h h2{margin:0;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.section-h .count{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.meal{margin:8px 22px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
+.meal .thumb{width:50px;height:50px;border-radius:12px;background:linear-gradient(135deg,#EAE2D1,#D4C4A8);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.meal .info{flex:1;min-width:0}
+.meal .name{font-weight:600;font-size:14px;color:var(--ink);margin-bottom:3px}
+.meal .macs{font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+.meal .cal{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--sage-deep);font-weight:600}
+
+/* nav */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:rgba(251,248,242,.94);backdrop-filter:blur(20px);border-top:1px solid var(--line);display:flex;padding:10px 8px calc(12px + env(safe-area-inset-bottom,0px));z-index:50}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;padding:6px 2px}
+.nav-btn.active{color:var(--sage-deep)}
+.nav-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6}
+
+.banner{background:var(--ink);color:#F7F2EA;padding:10px 22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;text-align:center}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="banner">Mockup A · Stone Studio · editorial + warm</div>
+  <div class="hdr">
+    <div>
+      <div class="kicker">Sunday · April 20</div>
+      <h1 class="display">Good morning, Whitney.</h1>
+    </div>
+    <div class="avatar">W</div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-top">
+      <span class="hero-lbl">Calories today</span>
+      <span class="hero-rem">608 remaining</span>
+    </div>
+    <div class="hero-num"><span class="n">992</span><span class="g">of 1,600 kcal</span></div>
+    <div class="hero-bar"><i></i></div>
+    <div class="hero-sub"><span>–412 under TDEE</span><span>62%</span></div>
+  </div>
+
+  <div class="macros">
+    <div class="mac prot"><div class="k">Protein</div><div class="v">105g</div><div class="g">/ 135g</div><div class="bar"><i></i></div></div>
+    <div class="mac carbs"><div class="k">Carbs</div><div class="v">86g</div><div class="g">/ 160g</div><div class="bar"><i></i></div></div>
+    <div class="mac fat"><div class="k">Fat</div><div class="v">23g</div><div class="g">/ 58g</div><div class="bar"><i></i></div></div>
+  </div>
+
+  <div class="coach">
+    <div class="tag">Coach</div>
+    <p>You're tracking <em>a little light on fat</em> today — add an avocado or a drizzle of olive oil at dinner to keep your hormones happy.</p>
+  </div>
+
+  <div class="log-card">
+    <div class="k">Log something</div>
+    <input type="text" placeholder="Search your foods or describe a meal…">
+    <div class="log-row">
+      <button class="btn primary">LOG</button>
+      <button class="btn ghost">📷</button>
+      <button class="btn ghost">🎙</button>
+    </div>
+  </div>
+
+  <div class="section-h"><h2>Today's meals</h2><span class="count">3 entries</span></div>
+  <div class="meal"><div class="thumb">🥣</div><div class="info"><div class="name">Greek yogurt, berries, almonds</div><div class="macs">28g P · 22g C · 9g F · 1 bowl</div></div><div class="cal">310</div></div>
+  <div class="meal"><div class="thumb">🥗</div><div class="info"><div class="name">Chicken Caesar, no croutons</div><div class="macs">42g P · 12g C · 18g F · 1 plate</div></div><div class="cal">380</div></div>
+  <div class="meal"><div class="thumb">☕</div><div class="info"><div class="name">Oat milk latte</div><div class="macs">6g P · 18g C · 5g F · grande</div></div><div class="cal">150</div></div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6h-6v6H5a2 2 0 0 1-2-2z"/></svg>Today</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>Log</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z M8 4v16 M16 4v16"/></svg>Recipes</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week</button>
+  <button class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>You</button>
+</nav>
+</body>
+</html>
