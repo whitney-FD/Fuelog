@@ -647,6 +647,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
     </div>
     <button class="btn-full secondary" onclick="restoreDefaultSupps()" style="margin-top:8px">↺ Restore default supplements</button>
+    <button class="btn-full secondary" onclick="scrubSupplementNumbers()" style="margin-top:6px">🧹 Zero out obviously-wrong macros</button>
     <div class="goal-section-title">Tracked Nutrients</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Choose which extras show on your dashboard.</div>
     <div id="nutrient-toggles" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
@@ -1807,10 +1808,15 @@ function renderEntries(){
 
   if(activeSlot==='all'){
     let html='';
+    const anyFood=mealEntries.length>0;
     SLOTS.forEach(s=>{
       const se=mealEntries.filter(e=>e.slot===s);
       const st=totals(se);
       const hasFood=se.length>0;
+      // If the user has food in any slot, render every slot so they can add to
+      // empty ones. If they only have supplements today, hide empty meal slots
+      // entirely so the view isn't cluttered with four "Nothing logged" rows.
+      if(!hasFood&&!anyFood)return;
       const bodyId=`meal-body-${s}`;
       const chevId=`meal-chev-${s}`;
       const collapsed=mealCollapsed[s]||false;
@@ -1832,10 +1838,12 @@ function renderEntries(){
     if(unslotted.length){
       html+=`<div class="meal-section"><div class="meal-section-hdr"><div class="meal-section-hdr-left"><span class="meal-section-name">Other</span></div></div><div class="meal-section-body">${unslotted.map(entryHTML).join('')}</div></div>`;
     }
-    // Supplements — collapsed by default, at the end, distinct visual.
+    // Supplements — collapsed by default when meals exist, expanded when they
+    // don't (so a supps-only day isn't just a stack of empty headers).
     if(suppEntries.length){
       const suppT=totals(suppEntries);
-      const collapsed=mealCollapsed.supplement===undefined?true:!!mealCollapsed.supplement; // default collapsed, toggle flips
+      const userPref=mealCollapsed.supplement;
+      const collapsed=userPref===undefined?anyFood:!!userPref;
       html+=`<div class="meal-section" style="border-top:1px dashed var(--border);margin-top:10px;padding-top:6px">
         <div class="meal-section-hdr" onclick="toggleMealSection('supplement')">
           <div class="meal-section-hdr-left">
@@ -1850,6 +1858,7 @@ function renderEntries(){
         </div>
       </div>`;
     }
+    if(!html)html=`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">Nothing logged yet</div></div>`;
     el.innerHTML=html;
   }else{
     el.innerHTML=vis.length?`<div style="padding:0 16px">${vis.slice().reverse().map(entryHTML).join('')}</div>`:`<div class="empty-state"><div class="es-icon">🍽️</div><div class="es-txt">Nothing for ${SLOT_LABELS[activeSlot]}</div></div>`;
@@ -2572,6 +2581,24 @@ function restoreDefaultSupps(){
   S('fl_supps',supplements);
   renderSuppManager();renderSupps();
   toast('Defaults restored');
+}
+
+// Supplements like Vitamin C, Creatine, Fish Oil, Probiotic shouldn't have
+// iron, sodium, sugar, etc. This zeros those numeric fields on any supp whose
+// name doesn't look like it should (iron stays only on things named "iron" or
+// "multivitamin"). One-tap cleanup when AI estimates or stale data went weird.
+function scrubSupplementNumbers(){
+  if(!confirm('Zero out iron on any supplement that is not a multivitamin or iron pill? (Keeps names, serving sizes, and clearly-macro fields like fish oil fat.)'))return;
+  const keepsIron=n=>/iron|multivit|multi-vit|prenatal|ferr/i.test(n||'');
+  let touched=0;
+  supplements.forEach(s=>{
+    if(!keepsIron(s.name)&&+s.iron){s.iron=0;touched++;}
+    // obviously-wrong sodium on things that aren't electrolytes/pre-workout
+    if(!/electrolyte|pre[- ]?work|salt|sodium/i.test(s.name||'')&&+s.sodium>50){s.sodium=0;touched++;}
+  });
+  S('fl_supps',supplements);
+  renderSuppManager();renderSupps();render();
+  toast(touched?`Scrubbed ${touched} field${touched>1?'s':''}`:'Nothing looked off — already clean');
 }
 function openSuppSettings(){openOverlay('overlay-supp-settings');renderSuppManager();}
 
