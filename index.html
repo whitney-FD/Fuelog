@@ -655,7 +655,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       </select>
       <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
     </div>
-    <button class="btn-full secondary" onclick="toggleGoalsSuppScan()" style="margin-top:6px">📷 Scan supplement barcode</button>
+    <button class="btn-full" onclick="toggleGoalsSuppScan()" style="margin-top:6px;background:var(--g-teal);color:#fff;box-shadow:0 4px 14px rgba(31,194,192,.3)">📷 Scan supplement barcode</button>
     <div class="scanner-wrap" id="goals-supp-scan-wrap" style="margin-top:8px">
       <div class="scanner-inner">
         <video id="goals-supp-scan-video" autoplay playsinline muted></video>
@@ -1011,6 +1011,29 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
+<!-- MODAL: EDIT SUPPLEMENT -->
+<div class="overlay" id="overlay-supp-edit" onclick="closeOverlay('overlay-supp-edit')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit Supplement</div>
+    <div class="field-lbl">Name</div>
+    <input class="field-input" type="text" id="se-name">
+    <div class="field-lbl">Dose label (optional, e.g. "25 mg", "1000 IU", "5 g")</div>
+    <input class="field-input" type="text" id="se-note" placeholder="25 mg">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Only fill in macros that actually apply. Leave the rest at 0.</div>
+    <div class="macro-grid">
+      <div class="macro-field"><label>Calories</label><input type="number" id="se-cal" step="any" placeholder="0"></div>
+      <div class="macro-field"><label>Iron mg</label><input type="number" id="se-iron" step="any" placeholder="0"></div>
+      <div class="macro-field"><label>Sodium mg</label><input type="number" id="se-sodium" step="any" placeholder="0"></div>
+      <div class="macro-field"><label>Vit A %</label><input type="number" id="se-vita" step="any" placeholder="0"></div>
+      <div class="macro-field"><label>Fat g</label><input type="number" id="se-fat" step="any" placeholder="0"></div>
+      <div class="macro-field"><label>Sugar g</label><input type="number" id="se-sugar" step="any" placeholder="0"></div>
+    </div>
+    <button class="btn-full" onclick="saveSuppEdit()">Save</button>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-supp-edit')">Cancel</button>
+  </div>
+</div>
+
 <!-- MODAL: FOOD LIBRARY EDITOR -->
 <div class="overlay" id="overlay-food-lib" onclick="closeOverlay('overlay-food-lib')">
   <div class="modal" onclick="event.stopPropagation()">
@@ -1190,6 +1213,31 @@ const DEFAULT_SUPPS=[
 
 let supplements=J('fl_supps',null);
 if(!supplements){supplements=[...DEFAULT_SUPPS];S('fl_supps',supplements);}
+
+// ══ IRON MIGRATION (v1, run once) ══
+// Earlier versions let bad iron values end up on supplements like Vitamin C,
+// Creatine, and Fish Oil. This one-time cleanup zeros iron on any supplement
+// whose name doesn't clearly indicate iron, and zeros iron on any already-
+// logged supplement entry in localStorage so the dashboard stops showing
+// phantom 500/5000/6000 mg iron totals. Guarded by a flag so it runs once.
+if(!localStorage.getItem('fl_iron_migration_v1')){
+  const keepsIron=n=>/iron|ferr|prenatal|multivit|multi-vit/i.test(n||'');
+  let suppChanged=false;
+  supplements.forEach(s=>{if(!keepsIron(s.name)&&+s.iron){s.iron=0;suppChanged=true;}});
+  if(suppChanged)S('fl_supps',supplements);
+  // Clean any logged supplement entries across all stored days.
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k||!k.startsWith('fl_e_'))continue;
+      const list=J(k,[]);
+      let chg=false;
+      list.forEach(e=>{if(e&&e.src==='supplement'&&!keepsIron(e.name)&&+e.iron){e.iron=0;chg=true;}});
+      if(chg)S(k,list);
+    }
+  }catch{}
+  localStorage.setItem('fl_iron_migration_v1','1');
+}
 
 const ALL_NUTRIENTS=[
   {key:'cal',label:'Calories',unit:'kcal',color:'var(--lime)',default:true,primary:true},
@@ -2563,35 +2611,52 @@ function renderSuppManager(){
   const el=document.getElementById('supp-manager-list');
   if(el){
     el.innerHTML=supplements.map((s,i)=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)">
         <input type="checkbox" ${s.active?'checked':''} onchange="toggleSuppActive(${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--teal-bright)">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}${s.note?` <span style="font-size:11px;color:var(--plum);font-weight:500">· ${s.note}</span>`:''}</div>
-          <div style="font-size:10px;color:var(--muted)">${s.cal?s.cal+'cal':''} ${s.iron?'Fe '+s.iron+'mg':''} ${s.fat?s.fat+'g fat':''} ${s.sodium?'Na '+s.sodium+'mg':''} ${!s.cal&&!s.iron&&!s.fat&&!s.sodium?'no macros':''}</div>
+          <div style="font-size:10px;color:var(--muted)">${s.cal?s.cal+' cal ':''}${s.iron?'· Fe '+s.iron+'mg ':''}${s.fat?'· '+s.fat+'g fat ':''}${s.sodium?'· Na '+s.sodium+'mg ':''}${!s.cal&&!s.iron&&!s.fat&&!s.sodium?'no macros · tap ✏️ to edit':''}</div>
         </div>
         <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
           <input type="number" value="${s.serving!=null?s.serving:1}" placeholder="1" min="0.1" step="0.25"
             onchange="updateSuppField(${i},'serving',+this.value)"
-            style="width:44px;background:var(--s2);border:1px solid var(--lime-dim);border-radius:6px;padding:3px 6px;color:var(--lime);font-size:11px;font-weight:700;outline:none;text-align:right"
+            style="width:44px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:4px 6px;color:var(--text);font-size:11px;font-weight:600;outline:none;text-align:right"
             title="Serving size (1=full, 0.5=half)">
           <span style="font-size:9px;color:var(--muted2);white-space:nowrap">srv</span>
-          <input type="number" value="${s.iron||0}" placeholder="0" min="0" step="1"
-            onchange="updateSuppField(${i},'iron',+this.value)"
-            style="width:46px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text);font-size:11px;outline:none;text-align:right"
-            title="Iron (mg)">
-          <span style="font-size:9px;color:var(--muted2)">mg</span>
-          <input type="number" value="${s.cal||0}" placeholder="0" min="0" step="1"
-            onchange="updateSuppField(${i},'cal',+this.value)"
-            style="width:40px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text);font-size:11px;outline:none;text-align:right"
-            title="Calories">
-          <span style="font-size:9px;color:var(--muted2)">cal</span>
-          <button onclick="deleteSupp(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0 2px">×</button>
+          <button onclick="openSuppEdit(${i})" style="background:none;border:1px solid var(--border);color:var(--plum);cursor:pointer;font-size:12px;padding:3px 7px;border-radius:6px" title="Edit macros">✏️</button>
+          <button onclick="deleteSupp(${i})" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px" title="Remove">×</button>
         </div>
       </div>`).join('');
   }
   // Modal list — same
   const mel=document.getElementById('supp-settings-list');
   if(mel)mel.innerHTML=el?el.innerHTML:'';
+}
+
+let suppEditIdx=-1;
+function openSuppEdit(i){
+  const s=supplements[i];if(!s)return;
+  suppEditIdx=i;
+  document.getElementById('se-name').value=s.name||'';
+  document.getElementById('se-note').value=s.note||'';
+  ['cal','iron','sodium','vita','fat','sugar'].forEach(k=>{
+    const el=document.getElementById('se-'+k);if(el)el.value=+s[k]||0;
+  });
+  openOverlay('overlay-supp-edit');
+}
+function saveSuppEdit(){
+  if(suppEditIdx<0||!supplements[suppEditIdx])return;
+  const s=supplements[suppEditIdx];
+  s.name=document.getElementById('se-name').value.trim()||s.name;
+  s.note=document.getElementById('se-note').value;
+  ['cal','iron','sodium','vita','fat','sugar'].forEach(k=>{
+    s[k]=+document.getElementById('se-'+k).value||0;
+  });
+  S('fl_supps',supplements);
+  suppEditIdx=-1;
+  closeOverlay('overlay-supp-edit');
+  renderSuppManager();renderSupps();
+  toast('Saved');
 }
 
 function updateSuppField(idx,field,val){
