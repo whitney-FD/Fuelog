@@ -653,9 +653,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
         <option value="ml">ml</option>
         <option value="srv">serving</option>
       </select>
-      <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
+      <button class="btn-log" id="btn-add-supp" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap">+ Add</button>
     </div>
-    <button class="btn-full" onclick="toggleGoalsSuppScan()" style="margin-top:6px;background:var(--g-teal);color:#fff;box-shadow:0 4px 14px rgba(31,194,192,.3)">📷 Scan supplement barcode</button>
+    <button class="btn-full" id="btn-scan-supp" style="margin-top:6px;background:var(--g-teal);color:#fff;box-shadow:0 4px 14px rgba(31,194,192,.3)">📷 Scan supplement barcode</button>
     <div class="scanner-wrap" id="goals-supp-scan-wrap" style="margin-top:8px">
       <div class="scanner-inner">
         <video id="goals-supp-scan-video" autoplay playsinline muted></video>
@@ -664,22 +664,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="scan-status" id="goals-supp-scan-status">Point camera at barcode</div>
       <div style="display:flex;gap:6px;padding:6px 10px 10px">
         <input type="text" inputmode="numeric" pattern="[0-9]*" id="goals-supp-scan-manual" placeholder="Or type the code (8–14 digits)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="flex:1;background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none">
-        <button class="btn-sm" onclick="goalsSuppScanManual()" style="flex-shrink:0">Look up</button>
+        <button class="btn-sm" id="btn-scan-supp-manual" style="flex-shrink:0">Look up</button>
       </div>
     </div>
-    <button class="btn-full secondary" onclick="restoreDefaultSupps()" style="margin-top:8px">↺ Restore default supplements</button>
-    <button class="btn-full secondary" onclick="scrubSupplementNumbers()" style="margin-top:6px">🧹 Zero out obviously-wrong macros</button>
+    <button class="btn-full secondary" id="btn-restore-supps" style="margin-top:8px">↺ Restore default supplements</button>
+    <button class="btn-full secondary" id="btn-scrub-supps" style="margin-top:6px">🧹 Zero out obviously-wrong macros</button>
     <div class="goal-section-title">Tracked Nutrients</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Choose which extras show on your dashboard.</div>
     <div id="nutrient-toggles" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
 
     <div class="goal-section-title">My Food Library</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Foods you've logged before. Edit bad macros or delete entries you don't want auto-suggested.</div>
-    <button class="btn-full secondary" onclick="openFoodLibraryEditor()">🍽 Manage My Foods</button>
+    <button class="btn-full secondary" id="btn-food-lib">🍽 Manage My Foods</button>
 
     <div class="goal-section-title">Export / Import Data</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Export saves ALL your data (logs, recipes, saved meals, food library) as a file. Import restores it. Do this before any app update.</div>
-    <button class="btn-full" onclick="exportData()" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;margin-bottom:8px;box-shadow:0 4px 14px rgba(111,75,191,.3)">⬇️ Export All Data</button>
+    <button class="btn-full" id="btn-export" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;margin-bottom:8px;box-shadow:0 4px 14px rgba(111,75,191,.3)">⬇️ Export All Data</button>
     <label class="btn-full secondary" style="display:block;text-align:center;cursor:pointer;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-family:'Fraunces',serif;font-size:14px;font-weight:900;margin-top:0">
       ⬆️ Import Data
       <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importData(event)">
@@ -1292,6 +1292,29 @@ loadGoalsForm();renderSlots();render();buildWeek();renderSuppManager();renderNut
 // Load saved notes + burn
 const nEl=document.getElementById('daily-notes');if(nEl)nEl.value=dailyNotes;
 const bEl=document.getElementById('burn-inp');if(bEl){bEl.value=burnKcal||'';updateNetDisplay();}
+
+// ══ Bind critical static buttons programmatically ══
+// Some iOS PWA installs silently drop inline onclick for specific buttons,
+// particularly ones inside dynamically-rendered card regions on the Goals
+// tab. Binding via addEventListener guarantees they fire. Inline onclick is
+// also removed to prevent double-firing on browsers where it still works.
+(function bindStaticClicks(){
+  const binds=[
+    ['btn-scan-supp',toggleGoalsSuppScan],
+    ['btn-scan-supp-manual',goalsSuppScanManual],
+    ['btn-add-supp',addCustomSupp],
+    ['btn-restore-supps',restoreDefaultSupps],
+    ['btn-scrub-supps',scrubSupplementNumbers],
+    ['btn-food-lib',openFoodLibraryEditor],
+    ['btn-export',exportData],
+  ];
+  binds.forEach(([id,fn])=>{
+    const el=document.getElementById(id);
+    if(!el||typeof fn!=='function')return;
+    el.removeAttribute('onclick');
+    el.addEventListener('click',ev=>{ev.preventDefault();try{fn(ev);}catch(e){console.error(id,e);toast(id+': '+e.message);}});
+  });
+})();
 
 // ══ NAV ══
 function gotoScreen(name,btn){
