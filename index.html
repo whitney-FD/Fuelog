@@ -1184,6 +1184,8 @@ let activeSlot='all';
 let recipeView='course';
 let recipeDrilldown=null; // null = grid view, else {type,key,label}
 let recipeFilter='all';
+let recipeSelectMode=false;
+let selectedRecipeIds=new Set();
 let scannerOn=false,codeReader=null;
 let scanStream=null,scanRAF=null,scanDetector=null;
 let suppScanStream=null,suppScanRAF=null,suppScanDetector=null;
@@ -3683,8 +3685,6 @@ function removeCustomCat(val){
 }
 
 // ══ RECIPE SELECT MODE / BULK DELETE ══
-let recipeSelectMode=false;
-let selectedRecipeIds=new Set();
 
 function toggleRecipeSelectMode(){
   recipeSelectMode=!recipeSelectMode;
