@@ -2291,6 +2291,7 @@ function renderRecipes(){
       const safeLabel=String(g.label||'').replace(/"/g,'&quot;').replace(/'/g,"\\'");
       return `<div class="recipe-tile" data-drill-type="${type}" data-drill-key="${g.key}" data-drill-label="${String(g.label||'').replace(/"/g,'&quot;')}" onclick="drillRecipes('${type}','${g.key}','${safeLabel}')">${bg}<div class="recipe-tile-overlay"><div class="recipe-tile-name">${g.label}</div><div class="recipe-tile-count">${g.cnt}</div></div></div>`;
     }).join('')+'</div>';
+    bindRecipeInteractions();
     return;
   }
 
@@ -2306,7 +2307,7 @@ function renderRecipes(){
   const backBtn=recipeDrilldown?`<div class="recipe-detail-header"><button class="recipe-detail-back" onclick="recipeDrilldown=null;renderRecipes()">&#8249;</button><div class="recipe-detail-title">${recipeDrilldown.label} <span style="color:var(--muted);font-weight:400;font-size:12px">${rs.length}</span></div></div>`:'';
   if(!rs.length){
     const msg=recipeView==='favorites'?'No favorites yet':'No recipes yet.';
-    el.innerHTML=backBtn+`<div class="empty-state"><div class="es-icon">🧑‍🍳</div><div class="es-txt">${msg}</div></div>`;return;
+    el.innerHTML=backBtn+`<div class="empty-state"><div class="es-icon">🧑‍🍳</div><div class="es-txt">${msg}</div></div>`;bindRecipeInteractions();return;
   }
   el.innerHTML=backBtn+rs.map(r=>{
     const s=r.servings;
