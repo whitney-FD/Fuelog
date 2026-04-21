@@ -655,6 +655,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       </select>
       <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
     </div>
+    <button class="btn-full secondary" onclick="toggleGoalsSuppScan()" style="margin-top:6px">📷 Scan supplement barcode</button>
+    <div class="scanner-wrap" id="goals-supp-scan-wrap" style="margin-top:8px">
+      <div class="scanner-inner">
+        <video id="goals-supp-scan-video" autoplay playsinline muted></video>
+        <div class="scan-frame"></div>
+      </div>
+      <div class="scan-status" id="goals-supp-scan-status">Point camera at barcode</div>
+      <div style="display:flex;gap:6px;padding:6px 10px 10px">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="goals-supp-scan-manual" placeholder="Or type the code (8–14 digits)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="flex:1;background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none">
+        <button class="btn-sm" onclick="goalsSuppScanManual()" style="flex-shrink:0">Look up</button>
+      </div>
+    </div>
     <button class="btn-full secondary" onclick="restoreDefaultSupps()" style="margin-top:8px">↺ Restore default supplements</button>
     <button class="btn-full secondary" onclick="scrubSupplementNumbers()" style="margin-top:6px">🧹 Zero out obviously-wrong macros</button>
     <div class="goal-section-title">Tracked Nutrients</div>
@@ -3277,6 +3289,76 @@ function openSuppScan(){
   }
 }
 
+// Goals-page inline supplement scanner. Shares the ZXing/BarcodeDetector
+// machinery with the modal scanner but uses its own video element so both
+// can stay mounted in the DOM without conflicting.
+let goalsSuppScannerOn=false,goalsSuppScanStream=null,goalsSuppScanRAF=null,goalsSuppScanDetector=null;
+function toggleGoalsSuppScan(){
+  const wrap=document.getElementById('goals-supp-scan-wrap');
+  if(goalsSuppScannerOn){stopGoalsSuppScan();wrap.classList.remove('open');goalsSuppScannerOn=false;return;}
+  wrap.classList.add('open');goalsSuppScannerOn=true;startGoalsSuppScan();
+}
+async function startGoalsSuppScan(){
+  const statusEl=document.getElementById('goals-supp-scan-status');
+  const videoEl=document.getElementById('goals-supp-scan-video');
+  try{
+    statusEl.textContent='Starting camera...';
+    goalsSuppScanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    videoEl.srcObject=goalsSuppScanStream;await videoEl.play().catch(()=>{});
+    if('BarcodeDetector' in window){
+      try{
+        const formats=await window.BarcodeDetector.getSupportedFormats();
+        goalsSuppScanDetector=new window.BarcodeDetector({formats:formats.length?formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
+        statusEl.textContent='Point camera at barcode — hold steady';
+        const tick=async()=>{
+          if(!goalsSuppScannerOn)return;
+          try{
+            const codes=await goalsSuppScanDetector.detect(videoEl);
+            if(codes&&codes.length){
+              const code=codes[0].rawValue;
+              stopGoalsSuppScan();
+              document.getElementById('goals-supp-scan-wrap').classList.remove('open');
+              goalsSuppScannerOn=false;
+              await lookupSuppBarcode(code);return;
+            }
+          }catch{}
+          goalsSuppScanRAF=requestAnimationFrame(tick);
+        };
+        goalsSuppScanRAF=requestAnimationFrame(tick);
+        return;
+      }catch(e){}
+    }
+    // ZXing fallback
+    const reader=new ZXing.BrowserMultiFormatReader();
+    goalsSuppScanDetector=reader;
+    statusEl.textContent='Point camera at barcode';
+    await reader.decodeFromStream(goalsSuppScanStream,videoEl,async(res)=>{
+      if(res){
+        const code=res.getText?res.getText():res.text;
+        stopGoalsSuppScan();
+        document.getElementById('goals-supp-scan-wrap').classList.remove('open');
+        goalsSuppScannerOn=false;
+        await lookupSuppBarcode(code);
+      }
+    });
+  }catch(e){statusEl.textContent='Camera error: '+(e.message||e.name||'unknown');}
+}
+function stopGoalsSuppScan(){
+  if(goalsSuppScanRAF){cancelAnimationFrame(goalsSuppScanRAF);goalsSuppScanRAF=null;}
+  if(goalsSuppScanDetector&&goalsSuppScanDetector.reset){try{goalsSuppScanDetector.reset();}catch{}}
+  goalsSuppScanDetector=null;
+  if(goalsSuppScanStream){goalsSuppScanStream.getTracks().forEach(t=>t.stop());goalsSuppScanStream=null;}
+  const v=document.getElementById('goals-supp-scan-video');if(v)v.srcObject=null;
+}
+async function goalsSuppScanManual(){
+  const el=document.getElementById('goals-supp-scan-manual');
+  const code=(el.value||'').replace(/\D/g,'');
+  if(code.length<8){toast('Enter an 8–14 digit barcode');return;}
+  el.value='';
+  stopGoalsSuppScan();document.getElementById('goals-supp-scan-wrap').classList.remove('open');goalsSuppScannerOn=false;
+  await lookupSuppBarcode(code);
+}
+
 async function startSuppScan(){
   const statusEl=document.getElementById('supp-scan-status');
   const videoEl=document.getElementById('supp-scan-video');
@@ -3328,17 +3410,17 @@ function stopSuppScan(){
 }
 
 async function lookupSuppBarcode(code){
-  toast('Looking up supplement...');
+  toast('Looking up supplement…',1800);
   try{
     const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
     const data=await res.json();
     if(data.status===1&&data.product&&data.product.product_name){
       const p=data.product;
       const n=p.nutriments||{};
-      const srvG=parseFloat(p.serving_size)||100;
-      const ratio=srvG/100;
-
-      // Map to supplement fields
+      // Use the robust parser so "0.88 oz" isn't read as 0.88 g (that bug
+      // gave a Chomps stick 3 cal — don't want the same on supplements).
+      const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
+      const servingLabel=p.serving_size||(srvG?srvG+'g':'1 serving');
       const newSupp={
         id:'supp_scan_'+Date.now(),
         name:p.product_name+(p.brands?` (${p.brands})`:''),
@@ -3348,30 +3430,27 @@ async function lookupSuppBarcode(code){
         fat:Math.round((n.fat_100g||0)*ratio*10)/10,
         fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,
         vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),
-        iron:Math.round((n['iron_value']||n['iron_100g']||0)*ratio*10)/10,
-        sodium:Math.round((n.sodium_100g||0)*ratio*1000), // convert g to mg
+        // OFF stores iron and sodium in grams per 100g — convert to mg.
+        iron:Math.round((n.iron_100g||0)*ratio*1000*10)/10,
+        sodium:Math.round((n.sodium_100g||0)*ratio*1000),
         sugar:Math.round((n.sugars_100g||0)*ratio*10)/10,
-        active:true,
-        note:`${p.serving_size||'1 serving'} · scanned`
+        active:true,serving:1,
+        note:`${servingLabel} · scanned`
       };
-
-      // Ask user to confirm
-      if(confirm(`Add "${newSupp.name}"?
-${newSupp.cal} cal · ${newSupp.iron}mg iron · ${newSupp.sodium}mg sodium`)){
+      if(confirm(`Add "${newSupp.name}"?\nServing: ${servingLabel}\n${newSupp.cal} cal · ${newSupp.iron}mg iron · ${newSupp.sodium}mg sodium\n\nYou can edit these numbers on the supplement card.`)){
         supplements.push(newSupp);
         S('fl_supps',supplements);
-        renderSuppManager();
-        renderSupps();
-        toast('Supplement added!');
+        renderSuppManager();renderSupps();
+        toast('✓ '+newSupp.name+' added',3500);
       }
     }else{
-      // Not in database — pre-fill name field with barcode
-      toast('Not found — enter name manually');
-      const nameEl=document.getElementById('modal-supp-name');
-      if(nameEl)nameEl.value=code;
+      toast('Not found in OFF — enter name + dose manually',4000);
+      const nameEl=document.getElementById('new-supp-name')||document.getElementById('modal-supp-name');
+      if(nameEl){nameEl.value=code;nameEl.focus();}
     }
   }catch(e){
-    toast('Scan lookup failed — try manually');
+    console.error(e);
+    toast('Scan lookup failed — '+(e.message||'check connection'),4000);
   }
 }
 
