@@ -53,7 +53,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
 .app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
-.screen{display:none;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(72px + var(--safe-b))}
+.screen{display:none;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(140px + var(--safe-b))}
 .screen.active{display:block}
  
 /* NAV */
@@ -2181,7 +2181,8 @@ function renderRecipes(){
     groups.unshift({key:'all',label:'All',cnt:recipes.length,isAll:true});
     el.innerHTML='<div class="recipe-grid">'+groups.map(g=>{
       const bg=g.isAll?`<div class="recipe-tile-bg" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;font-size:36px">🍽️</div>`:getCategoryTileHtml(g.key,type);
-      return `<div class="recipe-tile" onclick="drillRecipes('${type}','${g.key}','${g.label}')">${bg}<div class="recipe-tile-overlay"><div class="recipe-tile-name">${g.label}</div><div class="recipe-tile-count">${g.cnt}</div></div></div>`;
+      const safeLabel=String(g.label||'').replace(/"/g,'&quot;');
+      return `<div class="recipe-tile" data-drill-type="${type}" data-drill-key="${g.key}" data-drill-label="${safeLabel}">${bg}<div class="recipe-tile-overlay"><div class="recipe-tile-name">${g.label}</div><div class="recipe-tile-count">${g.cnt}</div></div></div>`;
     }).join('')+'</div>';
     return;
   }
@@ -2204,7 +2205,7 @@ function renderRecipes(){
     const s=r.servings;
     const allTags=[r.course&&r.course!=='none'?COURSE_LABELS[r.course]:null,...(r.cats||[]).map(c=>c.charAt(0).toUpperCase()+c.slice(1))].filter(Boolean);
     return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${selectedRecipeIds.has(r.id)?' selected-card':''}" data-rid="${r.id}">
-      <div class="rc-head" id="rch-${r.id}" onclick="recipeSelectMode?toggleRecipeSelect(${r.id},event):toggleRecipe(${r.id})">
+      <div class="rc-head" id="rch-${r.id}">
         ${r.photo?`<img class="rc-img" src="${r.photo}">`:`<div class="rc-img-placeholder">🍽️</div>`}
         <div class="rc-info"><div class="rc-name">${r.name}</div><div class="rc-meta">${s} srv · ${Math.round(r.cal/s)} cal · ${Math.round(r.prot/s*10)/10}g P</div>${allTags.length?`<div class="rc-tags">${allTags.map(t=>`<span class="rc-tag">${t}</span>`).join('')}</div>`:''}</div>
         ${recipeSelectMode?`<input type="checkbox" class="recipe-select-cb" ${selectedRecipeIds.has(r.id)?'checked':''} onclick="toggleRecipeSelect(${r.id},event)">`:''}<button class="rc-fav" onclick="event.stopPropagation();toggleFav(${r.id})">${r.favorite?'❤️':'🤍'}</button>
@@ -3564,6 +3565,32 @@ function clearToday(){const label=activeDayOffset===0?'today':new Date(getActive
 
 // Close search on outside tap
 document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))closeSearchResults()});
+
+// Delegated click handler for the recipes list — ensures taps on tiles and
+// cards still work even if an inline onclick got malformed by exotic recipe
+// data. Inline onclick stays as the primary path; this is a safety net.
+document.getElementById('recipes-list')?.addEventListener('click',e=>{
+  // 1) Category / course tile in the grid.
+  const tile=e.target.closest('.recipe-tile');
+  if(tile&&tile.dataset&&tile.dataset.drillType){
+    e.preventDefault();e.stopPropagation();
+    drillRecipes(tile.dataset.drillType,tile.dataset.drillKey,tile.dataset.drillLabel);
+    return;
+  }
+  // 2) Tap anywhere on a card head to expand/collapse (unless the tap is on
+  // the favorite button or one of the action buttons inside the card body).
+  if(e.target.closest('.rc-fav')||e.target.closest('.btn-recipe')||e.target.closest('.recipe-select-cb'))return;
+  const head=e.target.closest('.rc-head');
+  if(head){
+    const card=head.closest('.recipe-card');
+    const id=card&&card.dataset&&card.dataset.rid;
+    if(id!=null){
+      e.preventDefault();
+      if(recipeSelectMode){toggleRecipeSelect(+id,e);}
+      else{toggleRecipe(+id);}
+    }
+  }
+});
 
 
 </script>
