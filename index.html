@@ -642,8 +642,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="goal-section-title">Supplement Manager</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Toggle supplements on/off. Checked ones appear in your daily checklist.</div>
     <div id="supp-manager-list"></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <input class="field-input" type="text" id="new-supp-name" placeholder="Supplement name" style="margin-bottom:0;flex:1">
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+      <input class="field-input" type="text" id="new-supp-name" placeholder="Supplement name" style="margin-bottom:0;flex:1 1 100%">
+      <input class="field-input" type="number" id="new-supp-dose" placeholder="Dose" step="any" style="margin-bottom:0;flex:1 1 80px">
+      <select class="field-input" id="new-supp-unit" style="margin-bottom:0;flex:1 1 90px">
+        <option value="mg" selected>mg</option>
+        <option value="mcg">mcg (µg)</option>
+        <option value="g">g</option>
+        <option value="iu">IU</option>
+        <option value="ml">ml</option>
+        <option value="srv">serving</option>
+      </select>
       <button class="btn-log" style="padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap" onclick="addCustomSupp()">+ Add</button>
     </div>
     <button class="btn-full secondary" onclick="restoreDefaultSupps()" style="margin-top:8px">↺ Restore default supplements</button>
@@ -1233,6 +1242,7 @@ function gotoScreen(name,btn){
   if(name==='today')render();
   if(name==='week')buildWeek();
   if(name==='recipes')renderRecipes();
+  if(name==='goals'){renderSuppManager();renderNutrientToggles();}
 }
 function openQuickNav(name){
   const idx={today:0,week:1,recipes:2,goals:3};
@@ -2195,8 +2205,8 @@ function renderRecipes(){
     groups.unshift({key:'all',label:'All',cnt:recipes.length,isAll:true});
     el.innerHTML='<div class="recipe-grid">'+groups.map(g=>{
       const bg=g.isAll?`<div class="recipe-tile-bg" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;font-size:36px">🍽️</div>`:getCategoryTileHtml(g.key,type);
-      const safeLabel=String(g.label||'').replace(/"/g,'&quot;');
-      return `<div class="recipe-tile" data-drill-type="${type}" data-drill-key="${g.key}" data-drill-label="${safeLabel}">${bg}<div class="recipe-tile-overlay"><div class="recipe-tile-name">${g.label}</div><div class="recipe-tile-count">${g.cnt}</div></div></div>`;
+      const safeLabel=String(g.label||'').replace(/"/g,'&quot;').replace(/'/g,"\\'");
+      return `<div class="recipe-tile" data-drill-type="${type}" data-drill-key="${g.key}" data-drill-label="${String(g.label||'').replace(/"/g,'&quot;')}" onclick="drillRecipes('${type}','${g.key}','${safeLabel}')">${bg}<div class="recipe-tile-overlay"><div class="recipe-tile-name">${g.label}</div><div class="recipe-tile-count">${g.cnt}</div></div></div>`;
     }).join('')+'</div>';
     return;
   }
@@ -2219,7 +2229,7 @@ function renderRecipes(){
     const s=r.servings;
     const allTags=[r.course&&r.course!=='none'?COURSE_LABELS[r.course]:null,...(r.cats||[]).map(c=>c.charAt(0).toUpperCase()+c.slice(1))].filter(Boolean);
     return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${selectedRecipeIds.has(r.id)?' selected-card':''}" data-rid="${r.id}">
-      <div class="rc-head" id="rch-${r.id}">
+      <div class="rc-head" id="rch-${r.id}" onclick="recipeSelectMode?toggleRecipeSelect('${r.id}',event):toggleRecipe('${r.id}')">
         ${r.photo?`<img class="rc-img" src="${r.photo}">`:`<div class="rc-img-placeholder">🍽️</div>`}
         <div class="rc-info"><div class="rc-name">${r.name}</div><div class="rc-meta">${s} srv · ${Math.round(r.cal/s)} cal · ${Math.round(r.prot/s*10)/10}g P</div>${allTags.length?`<div class="rc-tags">${allTags.map(t=>`<span class="rc-tag">${t}</span>`).join('')}</div>`:''}</div>
         ${recipeSelectMode?`<input type="checkbox" class="recipe-select-cb" ${selectedRecipeIds.has(r.id)?'checked':''} onclick="toggleRecipeSelect(${r.id},event)">`:''}<button class="rc-fav" onclick="event.stopPropagation();toggleFav(${r.id})">${r.favorite?'❤️':'🤍'}</button>
@@ -2541,11 +2551,11 @@ function renderSuppManager(){
   const el=document.getElementById('supp-manager-list');
   if(el){
     el.innerHTML=supplements.map((s,i)=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-        <input type="checkbox" ${s.active?'checked':''} onchange="toggleSuppActive(${i},this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" ${s.active?'checked':''} onchange="toggleSuppActive(${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--teal-bright)">
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
-          <div style="font-size:10px;color:var(--muted)">${s.cal?s.cal+'cal':''} ${s.iron?s.iron+'mg iron':''} ${s.fat?s.fat+'g fat':''} ${s.sodium?s.sodium+'mg sodium':''}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}${s.note?` <span style="font-size:11px;color:var(--plum);font-weight:500">· ${s.note}</span>`:''}</div>
+          <div style="font-size:10px;color:var(--muted)">${s.cal?s.cal+'cal':''} ${s.iron?'Fe '+s.iron+'mg':''} ${s.fat?s.fat+'g fat':''} ${s.sodium?'Na '+s.sodium+'mg':''} ${!s.cal&&!s.iron&&!s.fat&&!s.sodium?'no macros':''}</div>
         </div>
         <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
           <input type="number" value="${s.serving!=null?s.serving:1}" placeholder="1" min="0.1" step="0.25"
@@ -2584,10 +2594,27 @@ function toggleSuppActive(idx,val){supplements[idx].active=val;S('fl_supps',supp
 function deleteSupp(idx){supplements.splice(idx,1);S('fl_supps',supplements);renderSuppManager();renderSupps();}
 function addCustomSupp(){
   const nameEl=document.getElementById('new-supp-name')||document.getElementById('modal-supp-name');
+  const doseEl=document.getElementById('new-supp-dose');
+  const unitEl=document.getElementById('new-supp-unit');
   const name=(nameEl?nameEl.value:'').trim();
   if(!name)return;
-  supplements.push({id:'supp_'+Date.now(),name,cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0,active:true});
-  S('fl_supps',supplements);nameEl.value='';renderSuppManager();renderSupps();toast(name+' added');
+  const dose=doseEl?+doseEl.value||0:0;
+  const unit=unitEl?(unitEl.value||'mg'):'mg';
+  const note=dose?`${dose} ${unit}`:'';
+  // Auto-detect if the dose should populate a tracked nutrient field. Saves
+  // the user from having to manually enter iron/sodium on an iron/salt pill.
+  const lname=name.toLowerCase();
+  const fields={cal:0,prot:0,carbs:0,fat:0,fiber:0,vita:0,iron:0,sodium:0,sugar:0};
+  if(dose&&unit==='mg'){
+    if(/iron|ferr|prenatal/i.test(lname))fields.iron=dose;
+    else if(/sodium|salt|electrolyte/i.test(lname))fields.sodium=dose;
+  }
+  supplements.push({id:'supp_'+Date.now(),name,...fields,active:true,serving:1,note});
+  S('fl_supps',supplements);
+  if(nameEl)nameEl.value='';
+  if(doseEl)doseEl.value='';
+  renderSuppManager();renderSupps();
+  toast(name+(note?' · '+note:'')+' added');
 }
 function restoreDefaultSupps(){
   if(supplements.length&&!confirm('Merge the default supplements back in? Your existing ones will stay.'))return;
@@ -3580,30 +3607,6 @@ function clearToday(){const label=activeDayOffset===0?'today':new Date(getActive
 // Close search on outside tap
 document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))closeSearchResults()});
 
-// Delegated click handler at document level for recipe tiles and cards.
-// Uses data attributes so no escaping issues with recipe names, and runs at
-// the document level so it fires regardless of container quirks (overflow,
-// sticky positioning, iOS PWA oddities).
-document.addEventListener('click',e=>{
-  // Only care about clicks inside the recipes screen.
-  if(!e.target.closest('#screen-recipes'))return;
-  const tile=e.target.closest('.recipe-tile');
-  if(tile&&tile.dataset.drillType){
-    e.preventDefault();
-    drillRecipes(tile.dataset.drillType,tile.dataset.drillKey,tile.dataset.drillLabel);
-    return;
-  }
-  if(e.target.closest('.rc-fav')||e.target.closest('.btn-recipe')||e.target.closest('.recipe-select-cb'))return;
-  const card=e.target.closest('.recipe-card');
-  if(!card)return;
-  const head=e.target.closest('.rc-head');
-  if(!head)return;
-  const id=card.dataset.rid;
-  if(id==null||id==='')return;
-  e.preventDefault();
-  if(recipeSelectMode){toggleRecipeSelect(id,e);}
-  else{toggleRecipe(id);}
-},true); // capture phase — fires before any child handlers that might stopPropagation
 
 
 </script>
