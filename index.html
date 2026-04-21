@@ -338,7 +338,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .recipe-select-cb{position:absolute;top:10px;right:10px;width:20px;height:20px;cursor:pointer;accent-color:var(--lime);display:none;z-index:10}
 .recipe-card.select-mode .recipe-select-cb{display:block}
 .recipe-card.select-mode{cursor:pointer}
-.recipe-card.selected-card{border-color:var(--lime);background:rgba(31,194,192,.04)}
+.recipe-card.selected-card{border-color:var(--teal-bright);background:linear-gradient(135deg,rgba(31,194,192,.12),rgba(111,75,191,.08));box-shadow:0 0 0 2px var(--teal-bright),var(--shadow-pop)}
 .bulk-bar{display:none;position:sticky;bottom:72px;left:16px;right:16px;margin:0 16px 8px;background:var(--s2);border:1px solid var(--lime);border-radius:12px;padding:10px 14px;flex-direction:row;justify-content:space-between;align-items:center;z-index:50;backdrop-filter:blur(8px)}
 .bulk-bar.show{display:flex}
 
@@ -403,10 +403,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <div class="page-top">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div class="page-title">FUEL<span>LOG</span></div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="shiftActiveDay(-1)" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">‹</button>
-        <div id="today-date-sub" onclick="jumpToToday()" style="font-size:12px;color:var(--muted);cursor:pointer;text-align:center;min-width:110px"></div>
-        <button onclick="shiftActiveDay(1)" id="day-next-btn" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">›</button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="shiftActiveDay(-1)" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">‹</button>
+        <button onclick="jumpToToday()" id="today-jump-btn" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);font-family:'Fraunces',serif;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.08em">TODAY</button>
+        <div id="today-date-sub" onclick="jumpToToday()" style="font-size:12px;color:var(--muted);cursor:pointer;text-align:center;min-width:100px"></div>
+        <button onclick="shiftActiveDay(1)" id="day-next-btn" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">›</button>
       </div>
     </div>
   </div>
@@ -2534,7 +2535,8 @@ function renderRecipes(){
   el.innerHTML=backBtn+rs.map(r=>{
     const s=r.servings;
     const allTags=[r.course&&r.course!=='none'?COURSE_LABELS[r.course]:null,...(r.cats||[]).map(c=>c.charAt(0).toUpperCase()+c.slice(1))].filter(Boolean);
-    return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${selectedRecipeIds.has(r.id)?' selected-card':''}" data-rid="${r.id}">
+    const isSel=[...selectedRecipeIds].some(x=>String(x)===String(r.id));
+    return `<div class="recipe-card${recipeSelectMode?' select-mode':''}${isSel?' selected-card':''}" data-rid="${r.id}">
       <div class="rc-head" id="rch-${r.id}" onclick="recipeSelectMode?toggleRecipeSelect('${r.id}',event):toggleRecipe('${r.id}')">
         ${r.photo?`<img class="rc-img" src="${r.photo}">`:`<div class="rc-img-placeholder">🍽️</div>`}
         <div class="rc-info"><div class="rc-name">${r.name}</div><div class="rc-meta">${s} srv · ${Math.round(r.cal/s)} cal · ${Math.round(r.prot/s*10)/10}g P</div>${allTags.length?`<div class="rc-tags">${allTags.map(t=>`<span class="rc-tag">${t}</span>`).join('')}</div>`:''}</div>
@@ -2700,7 +2702,7 @@ function getWeekDeficit(){
   return total;
 }
 
-function shiftWeek(dir){weekOffset+=dir;buildWeek();}
+function shiftWeek(dir){if(dir===0)weekOffset=0;else weekOffset+=dir;buildWeek();}
 function setWeekView(mode,btn){
   weekViewMode=mode;
   document.querySelectorAll('.wvt-btn').forEach(b=>b.classList.remove('active'));
@@ -4156,15 +4158,31 @@ function renderExerciseCard(ex,ei){
     const weight=set.weight||'';
     const reps=set.reps||'';
     const weightInput=isMob
-      ? '<span style="flex:0 0 80px;text-align:center;font-size:11px;color:var(--muted)">time/hold</span>'
-      : `<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="lb" inputmode="decimal" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+      ? '<span style="flex:1;text-align:center;font-size:10px;color:var(--muted)">hold / time</span>'
+      : `<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="lb" inputmode="decimal" step="0.5" style="width:56px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+    const canCopy=si>0;
+    const adjustRow=isMob?'':`
+      <div style="display:flex;gap:3px;margin-left:30px;margin-top:3px;flex-wrap:wrap">
+        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="-5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer">−5</button>
+        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="-2.5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer">−2.5</button>
+        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+2.5</button>
+        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+5</button>
+        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="10" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+10</button>
+        <span style="flex:1"></span>
+        <button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="-1" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--muted);cursor:pointer">−1</button>
+        <button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="1" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+1</button>
+      </div>`;
     return `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px${skip?';opacity:.55':''}">
-      <span style="flex:0 0 28px;font-size:11px;color:var(--muted);font-weight:700">${si+1}</span>
-      ${weightInput}
-      <span style="color:var(--muted);font-size:13px">×</span>
-      <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="reps" inputmode="numeric" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
-      <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 32px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:13px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
+    <div style="margin-bottom:4px${skip?';opacity:.5':''}">
+      <div style="display:flex;gap:5px;align-items:center">
+        <span style="flex:0 0 24px;font-size:10px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
+        ${weightInput}
+        <span style="color:var(--muted);font-size:11px;flex:0 0 8px">×</span>
+        <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="reps" inputmode="numeric" style="width:44px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
+        ${canCopy?`<button class="w-set-copy" data-ei="${ei}" data-si="${si}" title="Copy from set ${si}" style="flex:0 0 24px;background:none;border:1px solid var(--border);border-radius:5px;padding:4px 0;font-size:11px;color:var(--plum);cursor:pointer">↑</button>`:'<span style="flex:0 0 24px"></span>'}
+        <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 24px;background:none;border:1px solid var(--border);border-radius:5px;padding:4px 0;font-size:11px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
+      </div>
+      ${adjustRow}
     </div>`;
   }).join('');
   const last=lastSessionFor(activeWorkoutDayId);
@@ -4179,23 +4197,23 @@ function renderExerciseCard(ex,ei){
     }
   }
   return `
-  <div class="entry-card" style="margin-top:10px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+  <div style="margin-top:8px;background:var(--s2);border:1px solid var(--border);border-left:4px solid ${badgeColor};border-radius:10px;padding:10px 12px;box-shadow:var(--shadow-soft)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
       <div style="flex:1;min-width:0">
-        <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.005em">${ex.name}</div>
-        <div style="font-size:10px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">
+        <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.005em;line-height:1.15">${ex.name}</div>
+        <div style="font-size:10px;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
           <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
-          <span style="color:var(--muted)">${ex.reps} reps · ${rest}</span>
+          <span style="color:var(--muted)">${ex.reps} · ${rest}</span>
+          ${lastSummary?`<span style="color:var(--plum);font-weight:600">${lastSummary}</span>`:''}
         </div>
-        ${lastSummary?`<div style="font-size:10px;color:var(--plum);margin-top:3px;font-weight:600">${lastSummary}</div>`:''}
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
-        <button class="w-ex-swap" data-ei="${ei}" title="Swap" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:6px">↔</button>
-        <button class="w-ex-rm" data-ei="${ei}" title="Remove" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px">✕</button>
+      <div style="display:flex;gap:3px;flex-shrink:0">
+        <button class="w-ex-swap" data-ei="${ei}" title="Swap" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px;padding:3px 6px;border-radius:5px">↔</button>
+        <button class="w-ex-rm" data-ei="${ei}" title="Remove" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:11px;padding:3px 6px;border-radius:5px">✕</button>
       </div>
     </div>
-    <div style="margin-top:10px">${setRows}</div>
-    <button class="w-ex-addset" data-ei="${ei}" style="width:100%;margin-top:4px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:6px;border-radius:8px;font-family:inherit">+ another set</button>
+    <div style="margin-top:6px">${setRows}</div>
+    <button class="w-ex-addset" data-ei="${ei}" style="width:100%;margin-top:2px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-size:10px;padding:4px;border-radius:6px;font-family:inherit">+ set</button>
   </div>`;
 }
 
@@ -4204,9 +4222,39 @@ function bindWorkoutInlineInputs(){
   el.querySelectorAll('.w-set-w').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'weight',+ev.target.value||0)));
   el.querySelectorAll('.w-set-r').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'reps',+ev.target.value||0)));
   el.querySelectorAll('.w-set-skip').forEach(b=>b.addEventListener('click',ev=>toggleSetSkipped(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)));
+  el.querySelectorAll('.w-set-copy').forEach(b=>b.addEventListener('click',ev=>copySetFromAbove(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)));
+  el.querySelectorAll('.w-adj').forEach(b=>b.addEventListener('click',ev=>adjustWeight(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si,+ev.currentTarget.dataset.delta)));
+  el.querySelectorAll('.w-rep-adj').forEach(b=>b.addEventListener('click',ev=>adjustReps(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si,+ev.currentTarget.dataset.delta)));
   el.querySelectorAll('.w-ex-swap').forEach(b=>b.addEventListener('click',ev=>openExercisePicker(+ev.currentTarget.dataset.ei)));
   el.querySelectorAll('.w-ex-rm').forEach(b=>b.addEventListener('click',ev=>removeExerciseFromSession(+ev.currentTarget.dataset.ei)));
   el.querySelectorAll('.w-ex-addset').forEach(b=>b.addEventListener('click',ev=>addSetToExercise(+ev.currentTarget.dataset.ei)));
+}
+
+function copySetFromAbove(ei,si){
+  if(!activeWorkoutSession||si<1)return;
+  const ex=activeWorkoutSession.exercises[ei];if(!ex)return;
+  const above=ex.sets[si-1];if(!above)return;
+  ex.sets[si]={weight:above.weight,reps:above.reps,skipped:false};
+  S('fl_wkt_sessions',workoutSessions);
+  renderWorkoutBody();
+}
+
+function adjustWeight(ei,si,delta){
+  if(!activeWorkoutSession)return;
+  const s=activeWorkoutSession.exercises[ei].sets[si];
+  s.weight=Math.max(0,Math.round(((+s.weight||0)+delta)*10)/10);
+  s.skipped=false;
+  S('fl_wkt_sessions',workoutSessions);
+  renderWorkoutBody();
+}
+
+function adjustReps(ei,si,delta){
+  if(!activeWorkoutSession)return;
+  const s=activeWorkoutSession.exercises[ei].sets[si];
+  s.reps=Math.max(0,(+s.reps||0)+delta);
+  s.skipped=false;
+  S('fl_wkt_sessions',workoutSessions);
+  renderWorkoutBody();
 }
 
 function updateSet(ei,si,field,val){
