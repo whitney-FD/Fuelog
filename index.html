@@ -406,10 +406,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div style="display:flex;align-items:center;gap:6px">
         <button onclick="shiftActiveDay(-1)" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">‹</button>
         <button onclick="jumpToToday()" id="today-jump-btn" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);font-family:'Fraunces',serif;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.08em">TODAY</button>
-        <div id="today-date-sub" onclick="jumpToToday()" style="font-size:12px;color:var(--muted);cursor:pointer;text-align:center;min-width:100px"></div>
         <button onclick="shiftActiveDay(1)" id="day-next-btn" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">›</button>
       </div>
     </div>
+    <div class="page-sub" id="today-date-sub" onclick="jumpToToday()" style="cursor:pointer"></div>
   </div>
   <!-- CALORIE HERO -->
   <div class="cal-hero">
@@ -1358,51 +1358,51 @@ let suppHistVisible=false;
 // ══ WORKOUT JOURNAL STATE ══
 const DEFAULT_WORKOUT_ROUTINES=[
   {id:'day1',name:'Day 1 · Lower Strength',exercises:[
-    {name:'Back Squat',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs'},
-    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none'},
-    {name:'Romanian Deadlift',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none'},
-    {name:'Leg Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Seated Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'},
-    {name:'Smith / Leverage Squat',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Decline Sit-Ups or Russian Twist',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'}
+    {name:'Back Squat',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A'},
+    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none',pair:'A'},
+    {name:'Romanian Deadlift',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none',pair:'B'},
+    {name:'Leg Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
+    {name:'Seated Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'C'},
+    {name:'Smith / Leverage Squat',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'D'},
+    {name:'Decline Sit-Ups or Russian Twist',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D'}
   ]},
   {id:'day2',name:'Day 2 · Upper Push & Tri',exercises:[
-    {name:'Barbell Bench Press',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs'},
-    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'},
-    {name:'Overhead Shoulder Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Tricep Dips (stop 90°, upright)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Overhead DB Tricep Extension',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Incline DB Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'}
+    {name:'Barbell Bench Press',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A'},
+    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'A'},
+    {name:'Overhead Shoulder Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'Tricep Dips (stop 90°, upright)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'Overhead DB Tricep Extension',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
+    {name:'Incline DB Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'}
   ]},
   {id:'day3',name:'Day 3 · Lower Hyp',exercises:[
-    {name:'Hip Thrusts (Smith)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none'},
-    {name:'Standing Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'},
-    {name:'Leg Curls (Seated)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Leg Extensions',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs'},
-    {name:'Glute Bridge Hold (posterior tilt)',type:'mobility',sets:3,reps:'10×3sec',rest:0,unit:'none'}
+    {name:'Hip Thrusts (Smith)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
+    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none',pair:'A'},
+    {name:'Standing Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'B'},
+    {name:'Leg Curls (Seated)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'Leg Extensions',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
+    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs',pair:'C'},
+    {name:'Glute Bridge Hold (posterior tilt)',type:'mobility',sets:3,reps:'10×3sec',rest:0,unit:'none',pair:'D'}
   ]},
   {id:'day4',name:'Day 4 · Upper Pull',exercises:[
-    {name:'Deadlift',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs'},
-    {name:'EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'DB Hammer Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Lat Pulldowns',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Seated Cable Rows',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Cable Rear Delt Flyes',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'},
-    {name:'Cable Face Pulls',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'}
+    {name:'Deadlift',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A'},
+    {name:'EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
+    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'DB Hammer Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'Lat Pulldowns',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
+    {name:'Seated Cable Rows',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
+    {name:'Cable Rear Delt Flyes',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D'},
+    {name:'Cable Face Pulls',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D'}
   ]},
   {id:'day5',name:'Day 5 · Bonus Mix',exercises:[
-    {name:'Front or Landmine Squats',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Arnold Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Leg Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'},
-    {name:'Tricep Rope Pushdowns',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs'},
-    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs'},
-    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs'},
-    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none'}
+    {name:'Front or Landmine Squats',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
+    {name:'Arnold Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
+    {name:'Leg Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
+    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'B'},
+    {name:'Tricep Rope Pushdowns',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'C'},
+    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
+    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs',pair:'D'},
+    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none',pair:'D'}
   ]},
   {id:'blank',name:'✚ Blank / Custom',exercises:[]}
 ];
@@ -1410,6 +1410,20 @@ let workoutRoutines=J('fl_wkt_routines',null);
 if(!Array.isArray(workoutRoutines)||!workoutRoutines.length){
   workoutRoutines=JSON.parse(JSON.stringify(DEFAULT_WORKOUT_ROUTINES));
   S('fl_wkt_routines',workoutRoutines);
+}else if(!localStorage.getItem('fl_wkt_pairs_v1')){
+  // Back-fill pair info on the default D1-D5 routines without wiping user
+  // customisations or saved templates. If the user has renamed or reordered
+  // exercises we leave them alone.
+  DEFAULT_WORKOUT_ROUTINES.forEach(defRoutine=>{
+    const existing=workoutRoutines.find(r=>r.id===defRoutine.id);
+    if(!existing)return;
+    defRoutine.exercises.forEach(defEx=>{
+      const match=existing.exercises.find(e=>e.name===defEx.name);
+      if(match&&!match.pair&&defEx.pair)match.pair=defEx.pair;
+    });
+  });
+  S('fl_wkt_routines',workoutRoutines);
+  localStorage.setItem('fl_wkt_pairs_v1','1');
 }
 let workoutSessions=J('fl_wkt_sessions',[]);
 let activeWorkoutDayId=null; // which routine the user picked today
@@ -4147,42 +4161,51 @@ function renderWorkoutBody(){
   bindWorkoutInlineInputs();
 }
 
+// Pair palette — six easily distinguishable colors cycled by pair letter.
+// Each pair of exercises shares one colour so the user can see what they're
+// supersetting at a glance (mirrors the colour grouping in their spreadsheet).
+const PAIR_COLORS={A:'#1FC2C0',B:'#F94892',C:'#FFC857',D:'#6F4BBF',E:'#FF9B42',F:'#4FB880'};
+const PAIR_TINTS={A:'rgba(31,194,192,.08)',B:'rgba(249,72,146,.08)',C:'rgba(255,200,87,.12)',D:'rgba(111,75,191,.08)',E:'rgba(255,155,66,.10)',F:'rgba(79,184,128,.10)'};
+function pairInfo(ex,ei){
+  const key=ex.pair||'';
+  const color=PAIR_COLORS[key]||'var(--border2)';
+  const tint=PAIR_TINTS[key]||'transparent';
+  // Figure out if this is slot 1 or 2 within its pair (for the A1/A2 tag).
+  let slot=null;
+  if(key&&activeWorkoutSession){
+    const peers=activeWorkoutSession.exercises.filter(x=>x.pair===key);
+    const pos=peers.indexOf(ex);
+    if(pos>=0)slot=pos+1;
+  }
+  return{key,color,tint,slot};
+}
+
 function renderExerciseCard(ex,ei){
   const isMob=ex.type==='mobility';
   const isStr=ex.type==='strength';
   const badgeColor=isStr?'var(--coral)':isMob?'var(--plum)':'var(--teal-deep)';
   const badgeLabel=isStr?'Strength':isMob?'Mobility':'Hypertrophy';
   const rest=ex.rest?`${Math.round(ex.rest/60*10)/10} min rest`:'no rest';
+  const pair=pairInfo(ex,ei);
+  const pairTag=pair.key?`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:${pair.color};color:#fff;font-family:'Fraunces',serif;font-size:11px;font-weight:700;flex-shrink:0">${pair.key}${pair.slot||''}</span>`:'';
   const setRows=ex.sets.map((set,si)=>{
     const skip=!!set.skipped;
     const weight=set.weight||'';
     const reps=set.reps||'';
     const weightInput=isMob
-      ? '<span style="flex:1;text-align:center;font-size:10px;color:var(--muted)">hold / time</span>'
-      : `<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="lb" inputmode="decimal" step="0.5" style="width:56px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+      ? '<span style="flex:1;min-width:0;text-align:center;font-size:11px;color:var(--muted);padding:8px 0">hold / time</span>'
+      : `<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="lb" inputmode="decimal" step="0.5" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+    const plusBtn=isMob?'':`<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
     const canCopy=si>0;
-    const adjustRow=isMob?'':`
-      <div style="display:flex;gap:3px;margin-left:30px;margin-top:3px;flex-wrap:wrap">
-        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="-5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer">−5</button>
-        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="-2.5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer">−2.5</button>
-        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+2.5</button>
-        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="5" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+5</button>
-        <button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="10" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+10</button>
-        <span style="flex:1"></span>
-        <button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="-1" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--muted);cursor:pointer">−1</button>
-        <button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="1" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--teal-bright);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--teal-deep);cursor:pointer;font-weight:600">+1</button>
-      </div>`;
     return `
-    <div style="margin-bottom:4px${skip?';opacity:.5':''}">
-      <div style="display:flex;gap:5px;align-items:center">
-        <span style="flex:0 0 24px;font-size:10px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
-        ${weightInput}
-        <span style="color:var(--muted);font-size:11px;flex:0 0 8px">×</span>
-        <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="reps" inputmode="numeric" style="width:44px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
-        ${canCopy?`<button class="w-set-copy" data-ei="${ei}" data-si="${si}" title="Copy from set ${si}" style="flex:0 0 24px;background:none;border:1px solid var(--border);border-radius:5px;padding:4px 0;font-size:11px;color:var(--plum);cursor:pointer">↑</button>`:'<span style="flex:0 0 24px"></span>'}
-        <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 24px;background:none;border:1px solid var(--border);border-radius:5px;padding:4px 0;font-size:11px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
-      </div>
-      ${adjustRow}
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px${skip?';opacity:.55':''}">
+      <span style="flex:0 0 22px;font-size:11px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
+      ${weightInput}
+      ${plusBtn}
+      <span style="color:var(--muted);font-size:13px;flex:0 0 8px">×</span>
+      <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="reps" inputmode="numeric" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
+      ${canCopy?`<button class="w-set-copy" data-ei="${ei}" data-si="${si}" title="Copy from set ${si}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:var(--plum);cursor:pointer">↑</button>`:'<span style="flex:0 0 30px"></span>'}
+      <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
     </div>`;
   }).join('');
   const last=lastSessionFor(activeWorkoutDayId);
@@ -4196,24 +4219,32 @@ function renderExerciseCard(ex,ei){
       lastSummary=`Last ${new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}: ${done.length}×${Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length)} @ ${maxW||''}${maxW?' lb':''}`;
     }
   }
+  // Pair-matched cards sit tighter together (only 4px gap instead of 10px)
+  // so it's visually obvious that "A1 and A2 are a superset I do together".
+  const prevEx=ei>0?activeWorkoutSession.exercises[ei-1]:null;
+  const tightTop=prevEx&&prevEx.pair&&prevEx.pair===ex.pair;
+  const marginTop=tightTop?'4px':'12px';
   return `
-  <div style="margin-top:8px;background:var(--s2);border:1px solid var(--border);border-left:4px solid ${badgeColor};border-radius:10px;padding:10px 12px;box-shadow:var(--shadow-soft)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
-      <div style="flex:1;min-width:0">
-        <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.005em;line-height:1.15">${ex.name}</div>
-        <div style="font-size:10px;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
-          <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
-          <span style="color:var(--muted)">${ex.reps} · ${rest}</span>
-          ${lastSummary?`<span style="color:var(--plum);font-weight:600">${lastSummary}</span>`:''}
+  <div style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-soft)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div style="display:flex;gap:10px;flex:1;min-width:0">
+        ${pairTag}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.005em;line-height:1.2">${ex.name}</div>
+          <div style="font-size:10px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">
+            <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
+            <span style="color:var(--muted)">${ex.reps} · ${rest}</span>
+          </div>
+          ${lastSummary?`<div style="font-size:10px;color:var(--plum);margin-top:3px;font-weight:600">${lastSummary}</div>`:''}
         </div>
       </div>
-      <div style="display:flex;gap:3px;flex-shrink:0">
-        <button class="w-ex-swap" data-ei="${ei}" title="Swap" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px;padding:3px 6px;border-radius:5px">↔</button>
-        <button class="w-ex-rm" data-ei="${ei}" title="Remove" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:11px;padding:3px 6px;border-radius:5px">✕</button>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="w-ex-swap" data-ei="${ei}" title="Swap exercise" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:6px">↔</button>
+        <button class="w-ex-rm" data-ei="${ei}" title="Remove from today" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px">✕</button>
       </div>
     </div>
-    <div style="margin-top:6px">${setRows}</div>
-    <button class="w-ex-addset" data-ei="${ei}" style="width:100%;margin-top:2px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-size:10px;padding:4px;border-radius:6px;font-family:inherit">+ set</button>
+    <div style="margin-top:10px">${setRows}</div>
+    <button class="w-ex-addset" data-ei="${ei}" style="width:100%;margin-top:4px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:6px;border-radius:8px;font-family:inherit">+ another set</button>
   </div>`;
 }
 
