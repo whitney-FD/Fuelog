@@ -2204,15 +2204,52 @@ function stopVoice(){
 }
 
 async function aiEstimateRecipe(){
-  const notes=document.getElementById('rm-notes').value.trim();if(!notes){toast('Add ingredients first');return}
+  const notes=document.getElementById('rm-notes').value.trim();
+  if(!notes){toast('Add ingredients first');return}
   if(!goals.apiKey||!goals.apiKey.startsWith('sk-ant')){toast('Add API key in Goals tab');return}
-  const btn=document.getElementById('rm-ai-btn');btn.textContent='Estimating...';btn.disabled=true;
+  const btn=document.getElementById('rm-ai-btn');btn.textContent='Estimating…';btn.disabled=true;
   try{
-    const r=await callClaude(`Return ONLY JSON total batch macros for this recipe: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n} vita=total Vitamin A % DV. Use USDA values.`,'Recipe: '+notes);
-    const m=JSON.parse(r.replace(/```json|```/g,'').trim());
-    ['cal','prot','carbs','fat','fiber','vita'].forEach(k=>{document.getElementById('rm-'+k).value=m[k]||0});
-    updatePerServing();toast('Macros estimated!');
-  }catch{toast('Could not estimate — fill manually')}
+    // Parse each ingredient into its own row so the user can edit/remove
+    // individual items, same as typing them in the picker one by one.
+    const r=await callClaude(
+      `You are a nutrition database. The user describes a recipe by listing ingredients (by voice or text). Parse each distinct ingredient into a separate JSON entry.
+Return ONLY a JSON array — one object per ingredient — no prose, no markdown.
+Each object: {"name":"ingredient name","qty":number,"unit":"each|oz|lb|g|cup|tbsp|tsp|ml|serving","cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n,"iron":n,"sugar":n,"sodium":n}
+All nutrient values are TOTALS for that qty × unit (not per unit). Use USDA FoodData Central values. vita=% DV. iron & sodium in mg. others in g, cal in kcal. If the user didn't specify a qty or unit for an ingredient, pick a sensible default (e.g. 1 each for eggs, 1 cup cooked rice).`,
+      notes
+    );
+    const clean=r.replace(/```json|```/g,'').trim();
+    let parsed;
+    try{parsed=JSON.parse(clean);}catch{
+      const s=clean.indexOf('[');const e=clean.lastIndexOf(']');
+      if(s>-1&&e>s)parsed=JSON.parse(clean.slice(s,e+1));
+    }
+    if(!Array.isArray(parsed)){
+      // Fallback: if AI returned a single object with totals, treat as one ingredient.
+      if(parsed&&typeof parsed==='object')parsed=[{name:'All ingredients',qty:1,unit:'serving',...parsed}];
+      else throw new Error('AI did not return a list');
+    }
+    // Append each parsed ingredient to the recipe's ingredients list AND save
+    // them in the library so they autocomplete next time.
+    parsed.forEach(ing=>{
+      if(!ing||!ing.name)return;
+      const iname=String(ing.name).trim();
+      const iunit=String(ing.unit||'serving').toLowerCase();
+      const iqty=+ing.qty||1;
+      const perUnit={
+        cal:(+ing.cal||0)/iqty,prot:(+ing.prot||0)/iqty,carbs:(+ing.carbs||0)/iqty,
+        fat:(+ing.fat||0)/iqty,fiber:(+ing.fiber||0)/iqty,vita:(+ing.vita||0)/iqty,
+        iron:(+ing.iron||0)/iqty,sugar:(+ing.sugar||0)/iqty,sodium:(+ing.sodium||0)/iqty
+      };
+      findOrCreateIngredient(iname,iunit,perUnit);
+      rmIngredients.push({name:iname,unit:iunit,qty:iqty,...perUnit});
+    });
+    renderRecipeIngredientList(); // re-renders AND auto-fills the macro totals
+    toast(`Parsed ${parsed.length} ingredient${parsed.length===1?'':'s'}`);
+  }catch(err){
+    console.error(err);
+    toast('AI parse failed: '+(err.message||'try editing manually'));
+  }
   btn.textContent='✨ AI Estimate Macros';btn.disabled=false;
 }
 
