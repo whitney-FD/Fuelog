@@ -2209,28 +2209,46 @@ async function aiEstimateRecipe(){
   if(!goals.apiKey||!goals.apiKey.startsWith('sk-ant')){toast('Add API key in Goals tab');return}
   const btn=document.getElementById('rm-ai-btn');btn.textContent='Estimating…';btn.disabled=true;
   try{
-    // Parse each ingredient into its own row so the user can edit/remove
-    // individual items, same as typing them in the picker one by one.
+    // Primary: ask for an array, one object per ingredient, so the user can
+    // edit each line individually. Secondary fallback: if the AI returns a
+    // totals object instead, put everything in a single 'Combined' row
+    // that the user can split manually.
     const r=await callClaude(
-      `You are a nutrition database. The user describes a recipe by listing ingredients (by voice or text). Parse each distinct ingredient into a separate JSON entry.
-Return ONLY a JSON array — one object per ingredient — no prose, no markdown.
-Each object: {"name":"ingredient name","qty":number,"unit":"each|oz|lb|g|cup|tbsp|tsp|ml|serving","cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n,"iron":n,"sugar":n,"sodium":n}
-All nutrient values are TOTALS for that qty × unit (not per unit). Use USDA FoodData Central values. vita=% DV. iron & sodium in mg. others in g, cal in kcal. If the user didn't specify a qty or unit for an ingredient, pick a sensible default (e.g. 1 each for eggs, 1 cup cooked rice).`,
+      `You are a nutrition database. The user describes a recipe by listing its ingredients (voice or text).
+Return ONLY a JSON ARRAY — one object per distinct ingredient — no prose, no markdown. Example output:
+[
+  {"name":"chicken breast","qty":2,"unit":"lb","cal":960,"prot":200,"carbs":0,"fat":12,"fiber":0,"vita":0,"iron":2.7,"sugar":0,"sodium":410},
+  {"name":"jasmine rice (cooked)","qty":3,"unit":"cup","cal":615,"prot":13,"carbs":135,"fat":1.2,"fiber":1.8,"vita":0,"iron":5.7,"sugar":0.3,"sodium":6}
+]
+Rules:
+- Each object must include name, qty (number), unit (one of: each, oz, lb, g, cup, tbsp, tsp, ml, serving), and the macro/micro fields.
+- Macro values are TOTALS for qty × unit, not per unit. cal in kcal; prot/carbs/fat/fiber/sugar in grams; vita as % daily value; iron and sodium in mg.
+- If the user didn't specify qty/unit for an ingredient, pick a sensible default (e.g. "1 full pack" → qty 1 unit "serving").
+- Use USDA FoodData Central values.`,
       notes
     );
     const clean=r.replace(/```json|```/g,'').trim();
-    let parsed;
-    try{parsed=JSON.parse(clean);}catch{
-      const s=clean.indexOf('[');const e=clean.lastIndexOf(']');
-      if(s>-1&&e>s)parsed=JSON.parse(clean.slice(s,e+1));
-    }
+    let parsed=null;
+    // Strict JSON parse.
+    try{parsed=JSON.parse(clean);}catch{}
+    // Array-slice fallback.
     if(!Array.isArray(parsed)){
-      // Fallback: if AI returned a single object with totals, treat as one ingredient.
-      if(parsed&&typeof parsed==='object')parsed=[{name:'All ingredients',qty:1,unit:'serving',...parsed}];
-      else throw new Error('AI did not return a list');
+      const s=clean.indexOf('[');const e=clean.lastIndexOf(']');
+      if(s>-1&&e>s){try{parsed=JSON.parse(clean.slice(s,e+1));}catch{}}
     }
-    // Append each parsed ingredient to the recipe's ingredients list AND save
-    // them in the library so they autocomplete next time.
+    // Object-slice fallback (single totals object).
+    if(parsed==null||(typeof parsed==='object'&&!Array.isArray(parsed))){
+      if(parsed==null){
+        const s=clean.indexOf('{');const e=clean.lastIndexOf('}');
+        if(s>-1&&e>s){try{parsed=JSON.parse(clean.slice(s,e+1));}catch{}}
+      }
+      // Convert single totals object to a one-entry array so the user has
+      // something editable to work with.
+      if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)){
+        parsed=[{name:'Combined ingredients',qty:1,unit:'serving',...parsed}];
+      }
+    }
+    if(!Array.isArray(parsed)||!parsed.length){throw new Error('AI response unparseable');}
     parsed.forEach(ing=>{
       if(!ing||!ing.name)return;
       const iname=String(ing.name).trim();
@@ -2244,11 +2262,21 @@ All nutrient values are TOTALS for that qty × unit (not per unit). Use USDA Foo
       findOrCreateIngredient(iname,iunit,perUnit);
       rmIngredients.push({name:iname,unit:iunit,qty:iqty,...perUnit});
     });
-    renderRecipeIngredientList(); // re-renders AND auto-fills the macro totals
-    toast(`Parsed ${parsed.length} ingredient${parsed.length===1?'':'s'}`);
+    renderRecipeIngredientList();
+    toast(`Parsed ${rmIngredients.length} ingredient${rmIngredients.length===1?'':'s'} — tap any row to edit`,4000);
   }catch(err){
     console.error(err);
-    toast('AI parse failed: '+(err.message||'try editing manually'));
+    // Last-resort belt and suspenders: if parsing fully failed, at least
+    // ask for totals and fill them so the user isn't left with nothing.
+    try{
+      const r2=await callClaude(`Return ONLY JSON total batch macros for this recipe: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n,"iron":n,"sugar":n,"sodium":n}. Use USDA values. Macros are totals for the whole recipe.`,'Recipe: '+notes);
+      const m=JSON.parse(r2.replace(/```json|```/g,'').trim());
+      ['cal','prot','carbs','fat','fiber','vita','iron','sugar','sodium'].forEach(k=>{const el=document.getElementById('rm-'+k);if(el&&m[k]!=null)el.value=m[k];});
+      updatePerServing();
+      toast('Macros estimated — but could not parse individual ingredients, add them manually if you want line-by-line editing',4500);
+    }catch(err2){
+      toast('AI parse failed: '+(err.message||'try editing manually'),4000);
+    }
   }
   btn.textContent='✨ AI Estimate Macros';btn.disabled=false;
 }
