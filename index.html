@@ -2339,6 +2339,42 @@ function renderRecipes(){
       </div>
     </div>`;
   }).join('');
+  bindRecipeInteractions();
+}
+
+// Wire up every recipe tile and card head with programmatic click listeners.
+// iOS PWA has been dropping the inline onclick on these, so we replace it
+// with addEventListener after each render. Also removes the inline onclick
+// attribute so there's zero chance of double-firing when inline DOES work.
+function bindRecipeInteractions(){
+  const el=document.getElementById('recipes-list');if(!el)return;
+  el.querySelectorAll('.recipe-tile').forEach(tile=>{
+    tile.removeAttribute('onclick');
+    if(tile._fuelogBound)return;
+    tile._fuelogBound=true;
+    tile.addEventListener('click',ev=>{
+      ev.preventDefault();ev.stopPropagation();
+      try{drillRecipes(tile.dataset.drillType,tile.dataset.drillKey,tile.dataset.drillLabel);}
+      catch(e){console.error(e);toast('Drill failed: '+e.message);}
+    });
+  });
+  el.querySelectorAll('.rc-head').forEach(head=>{
+    head.removeAttribute('onclick');
+    if(head._fuelogBound)return;
+    head._fuelogBound=true;
+    head.addEventListener('click',ev=>{
+      // Let taps on the favorite button, action buttons, and select checkbox fall through.
+      if(ev.target.closest('.rc-fav')||ev.target.closest('.btn-recipe')||ev.target.closest('.recipe-select-cb'))return;
+      ev.preventDefault();
+      const card=head.closest('.recipe-card');
+      const id=card&&card.dataset&&card.dataset.rid;
+      if(!id)return;
+      try{
+        if(recipeSelectMode)toggleRecipeSelect(id,ev);
+        else toggleRecipe(id);
+      }catch(e){console.error(e);toast('Open failed: '+e.message);}
+    });
+  });
 }
 
 function drillRecipes(type,key,label){
