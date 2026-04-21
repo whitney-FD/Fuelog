@@ -1266,6 +1266,31 @@ let burnKcal=J('fl_burn_'+getActiveDayKey(),0);
 let dailyNotes=J('fl_notes_'+getActiveDayKey(),'');
 let suppChecks=J('fl_supp_'+getActiveDayKey(),{});
 
+// ══ Hoisted misc state ══
+// All of the below used to be declared ad-hoc further down the file. Init
+// functions (render, renderEntries, renderSuppManager etc) reference them, so
+// they MUST exist before the init block runs. Previously, the first tap on
+// anything that triggered render() crashed in TDZ because these were still
+// in the dead zone — which in turn halted the entire top-level script, so
+// every other `let` below the crash point stayed uninitialized too. One
+// correct decl here avoids that cascade.
+let mealCollapsed=J('fl_meal_collapsed',{});
+let customCats=[];
+let foodEditIndex=-1;
+let suppEditIdx=-1;
+let searchTimer=null;
+let searchSeq=0;
+let pastDaySearchTimer=null;
+let lastBarcodeLookup={code:null,at:0};
+let rmSelectedCourse='none';
+let rmSelectedCats=[];
+let rmIngredients=[];
+let suppScannerOn=false;
+let suppCodeReader=null;
+let goalsSuppScannerOn=false,goalsSuppScanStream=null,goalsSuppScanRAF=null,goalsSuppScanDetector=null;
+let suppHistRange=7;
+let suppHistVisible=false;
+
 function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v:d}catch{return d}}
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
@@ -1393,7 +1418,6 @@ function addToLibrary(entry){
 }
 
 // ══ MY FOOD LIBRARY EDITOR ══
-let foodEditIndex=-1;
 function openFoodLibraryEditor(){
   document.getElementById('food-lib-search').value='';
   renderFoodLibraryList();
@@ -1456,7 +1480,6 @@ function deleteFoodLibraryEntry(i){
 }
 
 // ══ FOOD SEARCH ══
-let searchTimer=null;
 function onFoodInput(e){
   const q=e.target.value.trim();
   clearTimeout(searchTimer);
@@ -1493,7 +1516,6 @@ function parseServingGrams(p){
   // 4) Give up — no reliable conversion, caller falls back to per-100g values.
   return null;
 }
-let searchSeq=0;
 function renderSearchResults(q,matchedRecipes,mine,offResults,offStatus){
   const res=document.getElementById('search-results');
   if(!res)return;
@@ -1750,7 +1772,6 @@ async function scanManualSubmit(){
   await lookupBarcode(code);
 }
 
-let lastBarcodeLookup={code:null,at:0};
 async function lookupBarcode(code){
   // Duplicate-scan protection — same code within 4s is ignored.
   const now=Date.now();
@@ -2011,8 +2032,6 @@ function logSavedMeal(id){const m=savedMeals.find(x=>x.id===id);if(!m)return;add
 function deleteSaved(id){savedMeals=savedMeals.filter(m=>m.id!==id);S('fl_saved',savedMeals);openSavedMeals()}
 
 // ══ RECIPES ══
-let rmSelectedCourse='none';
-let rmSelectedCats=[];
 
 function selectCourse(el,val){
   document.querySelectorAll('#rm-course-tags .tag-opt').forEach(t=>t.classList.remove('selected'));
@@ -2037,7 +2056,6 @@ function openNewRecipeModal(){
 }
 
 // ══ RECIPE INGREDIENT EDITOR ══
-let rmIngredients=[];
 function renderRecipeIngredientList(){
   const el=document.getElementById('rm-ing-list');if(!el)return;
   if(!rmIngredients.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 0">No ingredients yet. Tap "+ Add Ingredient" — macros will auto-calculate.</div>';document.getElementById('rm-ing-totals').style.display='none';document.getElementById('rm-auto-note').style.display='none';return;}
@@ -2695,7 +2713,6 @@ function renderSuppManager(){
   if(mel)mel.innerHTML=el?el.innerHTML:'';
 }
 
-let suppEditIdx=-1;
 function openSuppEdit(i){
   const s=supplements[i];if(!s)return;
   suppEditIdx=i;
@@ -3130,7 +3147,6 @@ function saveEditEntry(){
 }
 
 // Past day food search
-let pastDaySearchTimer=null;
 function onPastDayInput(e){
   const q=e.target.value.trim();
   clearTimeout(pastDaySearchTimer);
@@ -3269,7 +3285,6 @@ function selectAllSupps(){
 
 
 // ══ MEAL SECTION COLLAPSE ══
-let mealCollapsed=J('fl_meal_collapsed',{});
 function toggleMealSection(slot){
   mealCollapsed[slot]=!mealCollapsed[slot];
   S('fl_meal_collapsed',mealCollapsed);
@@ -3277,8 +3292,6 @@ function toggleMealSection(slot){
 }
 
 // ══ SUPPLEMENT HISTORY ══
-let suppHistRange=7;
-let suppHistVisible=false;
 
 function toggleSuppHistory(){
   suppHistVisible=!suppHistVisible;
@@ -3400,8 +3413,6 @@ function updateDayHeader(){
 
 
 // ══ SUPPLEMENT BARCODE SCANNER ══
-let suppScannerOn=false;
-let suppCodeReader=null;
 
 function openSuppScan(){
   const wrap=document.getElementById('supp-scan-wrap');
@@ -3419,7 +3430,6 @@ function openSuppScan(){
 // Goals-page inline supplement scanner. Shares the ZXing/BarcodeDetector
 // machinery with the modal scanner but uses its own video element so both
 // can stay mounted in the DOM without conflicting.
-let goalsSuppScannerOn=false,goalsSuppScanStream=null,goalsSuppScanRAF=null,goalsSuppScanDetector=null;
 function toggleGoalsSuppScan(){
   const wrap=document.getElementById('goals-supp-scan-wrap');
   if(goalsSuppScannerOn){stopGoalsSuppScan();wrap.classList.remove('open');goalsSuppScannerOn=false;return;}
@@ -3657,7 +3667,6 @@ function updateRecipe(id){
 
 
 // ══ CUSTOM CATEGORIES ══
-let customCats=[];
 
 function addCustomCat(){
   const inp=document.getElementById('custom-cat-input');
