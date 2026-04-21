@@ -1554,7 +1554,21 @@ Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate
 
 // ══ ADD/DELETE ENTRIES ══
 function addEntry(e){entries.push(e);S('fl_e_'+getActiveDayKey(),entries);render()}
-function deleteEntry(id){entries=entries.filter(e=>e.id!==id);S('fl_e_'+getActiveDayKey(),entries);render();refreshCoach()}
+function deleteEntry(id){
+  // If this is a supplement entry, also uncheck it in today's checklist so the
+  // pill doesn't look 'taken' after the user removes the log.
+  const victim=entries.find(e=>e.id===id);
+  if(victim&&victim.src==='supplement'){
+    const match=supplements.find(s=>victim.name&&victim.name.toLowerCase().startsWith((s.name||'').toLowerCase()));
+    if(match&&suppChecks[match.id]){
+      delete suppChecks[match.id];
+      S('fl_supp_'+getActiveDayKey(),suppChecks);
+    }
+  }
+  entries=entries.filter(e=>e.id!==id);
+  S('fl_e_'+getActiveDayKey(),entries);
+  render();refreshCoach();
+}
 
 // ══ EDIT ENTRY ══
 function openEditEntry(id){
@@ -3566,31 +3580,30 @@ function clearToday(){const label=activeDayOffset===0?'today':new Date(getActive
 // Close search on outside tap
 document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))closeSearchResults()});
 
-// Delegated click handler for the recipes list — ensures taps on tiles and
-// cards still work even if an inline onclick got malformed by exotic recipe
-// data. Inline onclick stays as the primary path; this is a safety net.
-document.getElementById('recipes-list')?.addEventListener('click',e=>{
-  // 1) Category / course tile in the grid.
+// Delegated click handler at document level for recipe tiles and cards.
+// Uses data attributes so no escaping issues with recipe names, and runs at
+// the document level so it fires regardless of container quirks (overflow,
+// sticky positioning, iOS PWA oddities).
+document.addEventListener('click',e=>{
+  // Only care about clicks inside the recipes screen.
+  if(!e.target.closest('#screen-recipes'))return;
   const tile=e.target.closest('.recipe-tile');
-  if(tile&&tile.dataset&&tile.dataset.drillType){
-    e.preventDefault();e.stopPropagation();
+  if(tile&&tile.dataset.drillType){
+    e.preventDefault();
     drillRecipes(tile.dataset.drillType,tile.dataset.drillKey,tile.dataset.drillLabel);
     return;
   }
-  // 2) Tap anywhere on a card head to expand/collapse (unless the tap is on
-  // the favorite button or one of the action buttons inside the card body).
   if(e.target.closest('.rc-fav')||e.target.closest('.btn-recipe')||e.target.closest('.recipe-select-cb'))return;
+  const card=e.target.closest('.recipe-card');
+  if(!card)return;
   const head=e.target.closest('.rc-head');
-  if(head){
-    const card=head.closest('.recipe-card');
-    const id=card&&card.dataset&&card.dataset.rid;
-    if(id!=null){
-      e.preventDefault();
-      if(recipeSelectMode){toggleRecipeSelect(+id,e);}
-      else{toggleRecipe(+id);}
-    }
-  }
-});
+  if(!head)return;
+  const id=card.dataset.rid;
+  if(id==null||id==='')return;
+  e.preventDefault();
+  if(recipeSelectMode){toggleRecipeSelect(id,e);}
+  else{toggleRecipe(id);}
+},true); // capture phase — fires before any child handlers that might stopPropagation
 
 
 </script>
