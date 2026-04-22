@@ -1354,6 +1354,7 @@ let suppCodeReader=null;
 let goalsSuppScannerOn=false,goalsSuppScanStream=null,goalsSuppScanRAF=null,goalsSuppScanDetector=null;
 let suppHistRange=7;
 let suppHistVisible=false;
+let expandedExIdx=-1; // which exercise row is expanded in the workout view
 
 // ══ WORKOUT JOURNAL STATE ══
 const DEFAULT_WORKOUT_ROUTINES=[
@@ -4188,6 +4189,37 @@ function renderExerciseCard(ex,ei){
   const rest=ex.rest?`${Math.round(ex.rest/60*10)/10} min rest`:'no rest';
   const pair=pairInfo(ex,ei);
   const pairTag=pair.key?`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:${pair.color};color:#fff;font-family:'Fraunces',serif;font-size:11px;font-weight:700;flex-shrink:0">${pair.key}${pair.slot||''}</span>`:'';
+  const prevEx=ei>0?activeWorkoutSession.exercises[ei-1]:null;
+  const tightTop=prevEx&&prevEx.pair&&prevEx.pair===ex.pair;
+  const marginTop=tightTop?'3px':'10px';
+  const expanded=ei===expandedExIdx;
+
+  // COMPACT row (default) — spreadsheet-style. Tap anywhere to expand.
+  if(!expanded){
+    const setCells=ex.sets.map((set,si)=>{
+      const skip=!!set.skipped;
+      const filled=!skip&&(+set.weight||+set.reps);
+      const text=skip?'—':filled?(isMob?(set.reps||'✓'):`${set.weight||0}×${set.reps||0}`):'·';
+      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;background:${filled?'var(--s1)':'transparent'};border:1px solid ${filled?pair.color||badgeColor:'var(--border)'};border-radius:5px;font-size:10px;color:${skip?'var(--muted2)':filled?'var(--text)':'var(--muted2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
+    }).join('');
+    return `
+    <div class="w-ex-row" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:pointer">
+      <div style="display:flex;gap:8px;align-items:center">
+        ${pairTag}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.name}</div>
+          <div style="font-size:9px;margin-top:1px;color:var(--muted);letter-spacing:.02em">
+            <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
+            · ${ex.reps} · ${rest}
+          </div>
+        </div>
+        <span style="color:var(--muted);font-size:10px;flex-shrink:0">▾</span>
+      </div>
+      <div style="display:flex;gap:3px;margin-top:5px">${setCells}</div>
+    </div>`;
+  }
+
+  // EXPANDED editor
   const setRows=ex.sets.map((set,si)=>{
     const skip=!!set.skipped;
     const weight=set.weight||'';
@@ -4219,14 +4251,9 @@ function renderExerciseCard(ex,ei){
       lastSummary=`Last ${new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}: ${done.length}×${Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length)} @ ${maxW||''}${maxW?' lb':''}`;
     }
   }
-  // Pair-matched cards sit tighter together (only 4px gap instead of 10px)
-  // so it's visually obvious that "A1 and A2 are a superset I do together".
-  const prevEx=ei>0?activeWorkoutSession.exercises[ei-1]:null;
-  const tightTop=prevEx&&prevEx.pair&&prevEx.pair===ex.pair;
-  const marginTop=tightTop?'4px':'12px';
   return `
-  <div style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-soft)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+  <div style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-pop)">
+    <div class="w-ex-row" data-ei="${ei}" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;cursor:pointer">
       <div style="display:flex;gap:10px;flex:1;min-width:0">
         ${pairTag}
         <div style="flex:1;min-width:0">
@@ -4241,6 +4268,7 @@ function renderExerciseCard(ex,ei){
       <div style="display:flex;gap:4px;flex-shrink:0">
         <button class="w-ex-swap" data-ei="${ei}" title="Swap exercise" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:6px">↔</button>
         <button class="w-ex-rm" data-ei="${ei}" title="Remove from today" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px">✕</button>
+        <span style="font-size:11px;color:var(--muted);padding:4px 6px">▴</span>
       </div>
     </div>
     <div style="margin-top:10px">${setRows}</div>
@@ -4250,15 +4278,25 @@ function renderExerciseCard(ex,ei){
 
 function bindWorkoutInlineInputs(){
   const el=document.getElementById('w-screen-body');if(!el)return;
+  // Row tap toggles expand/collapse. Attached first so child-button stopPropagation keeps it from firing.
+  el.querySelectorAll('.w-ex-row').forEach(row=>{
+    row.addEventListener('click',ev=>{
+      // Ignore taps that started on a child action button or an input.
+      if(ev.target.closest('button,input,select'))return;
+      const ei=+row.dataset.ei;
+      expandedExIdx=(expandedExIdx===ei?-1:ei);
+      renderWorkoutBody();
+    });
+  });
   el.querySelectorAll('.w-set-w').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'weight',+ev.target.value||0)));
   el.querySelectorAll('.w-set-r').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'reps',+ev.target.value||0)));
-  el.querySelectorAll('.w-set-skip').forEach(b=>b.addEventListener('click',ev=>toggleSetSkipped(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)));
-  el.querySelectorAll('.w-set-copy').forEach(b=>b.addEventListener('click',ev=>copySetFromAbove(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)));
-  el.querySelectorAll('.w-adj').forEach(b=>b.addEventListener('click',ev=>adjustWeight(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si,+ev.currentTarget.dataset.delta)));
-  el.querySelectorAll('.w-rep-adj').forEach(b=>b.addEventListener('click',ev=>adjustReps(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si,+ev.currentTarget.dataset.delta)));
-  el.querySelectorAll('.w-ex-swap').forEach(b=>b.addEventListener('click',ev=>openExercisePicker(+ev.currentTarget.dataset.ei)));
-  el.querySelectorAll('.w-ex-rm').forEach(b=>b.addEventListener('click',ev=>removeExerciseFromSession(+ev.currentTarget.dataset.ei)));
-  el.querySelectorAll('.w-ex-addset').forEach(b=>b.addEventListener('click',ev=>addSetToExercise(+ev.currentTarget.dataset.ei)));
+  el.querySelectorAll('.w-set-skip').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();toggleSetSkipped(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)}));
+  el.querySelectorAll('.w-set-copy').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();copySetFromAbove(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)}));
+  el.querySelectorAll('.w-adj').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();adjustWeight(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si,+ev.currentTarget.dataset.delta)}));
+  el.querySelectorAll('.w-rep-adj').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();adjustReps(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si,+ev.currentTarget.dataset.delta)}));
+  el.querySelectorAll('.w-ex-swap').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();openExercisePicker(+ev.currentTarget.dataset.ei)}));
+  el.querySelectorAll('.w-ex-rm').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();removeExerciseFromSession(+ev.currentTarget.dataset.ei)}));
+  el.querySelectorAll('.w-ex-addset').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();addSetToExercise(+ev.currentTarget.dataset.ei)}));
 }
 
 function copySetFromAbove(ei,si){
