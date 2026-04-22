@@ -1359,74 +1359,89 @@ let expandedExIdx=-1; // which exercise row is expanded in the workout view
 // ══ WORKOUT JOURNAL STATE ══
 const DEFAULT_WORKOUT_ROUTINES=[
   {id:'day1',name:'Day 1 · Lower Strength',exercises:[
-    {name:'Back Squat',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A'},
-    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none',pair:'A'},
-    {name:'Romanian Deadlift',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none',pair:'B'},
-    {name:'Leg Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
-    {name:'Seated Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'C'},
-    {name:'Smith / Leverage Squat',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'D'},
-    {name:'Decline Sit-Ups or Russian Twist',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D'}
+    {name:'Back Squat',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A',muscle:'Quads, Glutes, Hamstrings'},
+    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none',pair:'A',muscle:'Core'},
+    {name:'Romanian Deadlift',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Hamstrings, Glutes'},
+    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none',pair:'B',muscle:'Hip Flexors'},
+    {name:'Leg Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Quads, Glutes'},
+    {name:'Seated Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'C',muscle:'Calves (soleus)'},
+    {name:'Smith / Leverage Squat',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'D',muscle:'Quads, Glutes'},
+    {name:'Decline Sit-Ups or Russian Twist',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D',muscle:'Core, Abs'}
   ]},
   {id:'day2',name:'Day 2 · Upper Push & Tri',exercises:[
-    {name:'Barbell Bench Press',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A'},
-    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'A'},
-    {name:'Overhead Shoulder Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'Tricep Dips (stop 90°, upright)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'Overhead DB Tricep Extension',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
-    {name:'Incline DB Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'}
+    {name:'Barbell Bench Press',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A',muscle:'Chest, Triceps, Front Delts'},
+    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'A',muscle:'Side Delts'},
+    {name:'Overhead Shoulder Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Front Delts, Triceps'},
+    {name:'Tricep Dips (stop 90°, upright)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Triceps, Chest'},
+    {name:'Overhead DB Tricep Extension',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Triceps (long head)'},
+    {name:'Incline DB Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Upper Chest, Front Delts'}
   ]},
   {id:'day3',name:'Day 3 · Lower Hyp',exercises:[
-    {name:'Hip Thrusts (Smith)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
-    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none',pair:'A'},
-    {name:'Standing Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'B'},
-    {name:'Leg Curls (Seated)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'Leg Extensions',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
-    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs',pair:'C'},
-    {name:'Glute Bridge Hold (posterior tilt)',type:'mobility',sets:3,reps:'10×3sec',rest:0,unit:'none',pair:'D'}
+    {name:'Hip Thrusts (Smith)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A',muscle:'Glutes'},
+    {name:'Hip Flexor Stretch (30s/side)',type:'mobility',sets:1,reps:'30 sec',rest:0,unit:'none',pair:'A',muscle:'Hip Flexors'},
+    {name:'Standing Calf Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'B',muscle:'Calves (gastroc)'},
+    {name:'Leg Curls (Seated)',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Hamstrings'},
+    {name:'Leg Extensions',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Quads'},
+    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs',pair:'C',muscle:'Core'},
+    {name:'Glute Bridge Hold (posterior tilt)',type:'mobility',sets:3,reps:'10×3sec',rest:0,unit:'none',pair:'D',muscle:'Glutes, Core'}
   ]},
   {id:'day4',name:'Day 4 · Upper Pull',exercises:[
-    {name:'Deadlift',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A'},
-    {name:'EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
-    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'DB Hammer Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'Lat Pulldowns',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
-    {name:'Seated Cable Rows',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
-    {name:'Cable Rear Delt Flyes',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D'},
-    {name:'Cable Face Pulls',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D'}
+    {name:'Deadlift',type:'strength',sets:5,reps:'4-6',rest:180,unit:'lbs',pair:'A',muscle:'Back, Hamstrings, Glutes, Traps'},
+    {name:'EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A',muscle:'Biceps'},
+    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Biceps (long head)'},
+    {name:'DB Hammer Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Biceps, Brachialis'},
+    {name:'Lat Pulldowns',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Lats, Biceps'},
+    {name:'Seated Cable Rows',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Mid Back, Lats'},
+    {name:'Cable Rear Delt Flyes',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D',muscle:'Rear Delts'},
+    {name:'Cable Face Pulls',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'D',muscle:'Rear Delts, Traps'}
   ]},
   {id:'day5',name:'Day 5 · Bonus Mix',exercises:[
-    {name:'Front or Landmine Squats',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
-    {name:'Arnold Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A'},
-    {name:'Leg Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B'},
-    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'B'},
-    {name:'Tricep Rope Pushdowns',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'C'},
-    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C'},
-    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs',pair:'D'},
-    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none',pair:'D'}
+    {name:'Front or Landmine Squats',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A',muscle:'Quads, Glutes'},
+    {name:'Arnold Press',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'A',muscle:'All Delts'},
+    {name:'Leg Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'B',muscle:'Hamstrings'},
+    {name:'Lateral Raises',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'B',muscle:'Side Delts'},
+    {name:'Tricep Rope Pushdowns',type:'hypertrophy',sets:5,reps:'12-15',rest:90,unit:'lbs',pair:'C',muscle:'Triceps'},
+    {name:'Incline EZ Bar Curls',type:'hypertrophy',sets:5,reps:'8-12',rest:90,unit:'lbs',pair:'C',muscle:'Biceps (long head)'},
+    {name:'Weighted Plank',type:'hypertrophy',sets:3,reps:'30-60 sec',rest:90,unit:'lbs',pair:'D',muscle:'Core'},
+    {name:'Dead Bug (or Bird Dog)',type:'mobility',sets:3,reps:'10',rest:0,unit:'none',pair:'D',muscle:'Core'}
   ]},
   {id:'blank',name:'✚ Blank / Custom',exercises:[]}
 ];
 let workoutRoutines=J('fl_wkt_routines',null);
+let workoutSessions=J('fl_wkt_sessions',[]);
 if(!Array.isArray(workoutRoutines)||!workoutRoutines.length){
   workoutRoutines=JSON.parse(JSON.stringify(DEFAULT_WORKOUT_ROUTINES));
   S('fl_wkt_routines',workoutRoutines);
-}else if(!localStorage.getItem('fl_wkt_pairs_v1')){
-  // Back-fill pair info on the default D1-D5 routines without wiping user
-  // customisations or saved templates. If the user has renamed or reordered
-  // exercises we leave them alone.
+}else if(!localStorage.getItem('fl_wkt_muscles_v1')){
+  // Back-fill pair + muscle info on default D1-D5 routines without wiping
+  // user customisations or saved templates. Also apply to already-saved
+  // workout sessions so existing rows show muscle info right away.
+  const byName={};
+  DEFAULT_WORKOUT_ROUTINES.forEach(r=>r.exercises.forEach(e=>{
+    if(!byName[e.name])byName[e.name]={pair:e.pair,muscle:e.muscle};
+  }));
   DEFAULT_WORKOUT_ROUTINES.forEach(defRoutine=>{
     const existing=workoutRoutines.find(r=>r.id===defRoutine.id);
     if(!existing)return;
     defRoutine.exercises.forEach(defEx=>{
       const match=existing.exercises.find(e=>e.name===defEx.name);
-      if(match&&!match.pair&&defEx.pair)match.pair=defEx.pair;
+      if(!match)return;
+      if(!match.pair&&defEx.pair)match.pair=defEx.pair;
+      if(!match.muscle&&defEx.muscle)match.muscle=defEx.muscle;
     });
   });
   S('fl_wkt_routines',workoutRoutines);
+  // Sessions too — match by exercise name.
+  let sessionsChanged=false;
+  workoutSessions.forEach(s=>s.exercises.forEach(e=>{
+    const seed=byName[e.name];if(!seed)return;
+    if(!e.pair&&seed.pair){e.pair=seed.pair;sessionsChanged=true;}
+    if(!e.muscle&&seed.muscle){e.muscle=seed.muscle;sessionsChanged=true;}
+  }));
+  if(sessionsChanged)S('fl_wkt_sessions',workoutSessions);
+  localStorage.setItem('fl_wkt_muscles_v1','1');
   localStorage.setItem('fl_wkt_pairs_v1','1');
 }
-let workoutSessions=J('fl_wkt_sessions',[]);
 let activeWorkoutDayId=null; // which routine the user picked today
 let activeWorkoutSession=null; // { id, date, dayId, dayName, exercises:[{name,type,reps,sets:[{weight,reps,skipped}]}], notes }
 let activeWorkoutDate=new Date().toDateString();
@@ -4069,7 +4084,7 @@ function ensureActiveSession(){
       const pre=lastEx&&lastEx.sets&&lastEx.sets[i];
       sets.push({weight:pre&&!pre.skipped?+pre.weight||0:0,reps:pre&&!pre.skipped?+pre.reps||0:0,skipped:false});
     }
-    return{name:ex.name,type:ex.type,reps:ex.reps,rest:ex.rest,unit:ex.unit||'lbs',sets};
+    return{name:ex.name,type:ex.type,reps:ex.reps,rest:ex.rest,unit:ex.unit||'lbs',pair:ex.pair||'',muscle:ex.muscle||'',sets};
   });
   s={id:Date.now(),date:activeWorkoutDate,dayId:activeWorkoutDayId,dayName:routine.name,exercises,notes:''};
   workoutSessions.push(s);
@@ -4198,8 +4213,20 @@ function renderExerciseCard(ex,ei){
   if(!expanded){
     const setCells=ex.sets.map((set,si)=>{
       const skip=!!set.skipped;
-      const filled=!skip&&(+set.weight||+set.reps);
-      const text=skip?'—':filled?(isMob?(set.reps||'✓'):`${set.weight||0}×${set.reps||0}`):'·';
+      const w=+set.weight||0,r=+set.reps||0;
+      const filled=!skip&&(w||r);
+      let text='·';
+      if(skip)text='—';
+      else if(filled){
+        if(isMob){
+          // On mobility, weight field stores seconds; reps stores rounds/sides.
+          if(w&&r)text=`${w}s×${r}`;
+          else if(w)text=`${w}s`;
+          else if(r)text=`×${r}`;
+        }else{
+          text=`${w||0}×${r||0}`;
+        }
+      }
       return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;background:${filled?'var(--s1)':'transparent'};border:1px solid ${filled?pair.color||badgeColor:'var(--border)'};border-radius:5px;font-size:10px;color:${skip?'var(--muted2)':filled?'var(--text)':'var(--muted2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
     }).join('');
     return `
@@ -4219,23 +4246,26 @@ function renderExerciseCard(ex,ei){
     </div>`;
   }
 
-  // EXPANDED editor
+  // EXPANDED editor. Mobility swaps weight for a seconds input and labels
+  // the reps column "rounds" (e.g. Hip Flexor Stretch: 30s × 2 sides).
   const setRows=ex.sets.map((set,si)=>{
     const skip=!!set.skipped;
     const weight=set.weight||'';
     const reps=set.reps||'';
-    const weightInput=isMob
-      ? '<span style="flex:1;min-width:0;text-align:center;font-size:11px;color:var(--muted);padding:8px 0">hold / time</span>'
-      : `<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="lb" inputmode="decimal" step="0.5" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
-    const plusBtn=isMob?'':`<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
+    const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${isMob?'sec':'lb'}" inputmode="${isMob?'numeric':'decimal'}" step="${isMob?1:0.5}" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+    const plusBtn=isMob
+      ? `<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 40px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
+      : `<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
+    const xLabel=isMob?'×':'×';
+    const repsPlaceholder=isMob?'rnds':'reps';
     const canCopy=si>0;
     return `
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px${skip?';opacity:.55':''}">
       <span style="flex:0 0 22px;font-size:11px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
       ${weightInput}
       ${plusBtn}
-      <span style="color:var(--muted);font-size:13px;flex:0 0 8px">×</span>
-      <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="reps" inputmode="numeric" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
+      <span style="color:var(--muted);font-size:13px;flex:0 0 8px">${xLabel}</span>
+      <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="${repsPlaceholder}" inputmode="numeric" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
       ${canCopy?`<button class="w-set-copy" data-ei="${ei}" data-si="${si}" title="Copy from set ${si}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:var(--plum);cursor:pointer">↑</button>`:'<span style="flex:0 0 30px"></span>'}
       <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
     </div>`;
@@ -4246,11 +4276,25 @@ function renderExerciseCard(ex,ei){
   if(lastEx){
     const done=lastEx.sets.filter(s=>!s.skipped&&(s.weight||s.reps));
     if(done.length){
-      const maxW=Math.max(...done.map(s=>+s.weight||0));
-      const topSet=done.find(s=>+s.weight===maxW)||done[0];
-      lastSummary=`Last ${new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}: ${done.length}×${Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length)} @ ${maxW||''}${maxW?' lb':''}`;
+      const dateStr=new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      if(isMob){
+        const avgSec=Math.round(done.reduce((a,s)=>a+(+s.weight||0),0)/done.length);
+        const totalRounds=done.reduce((a,s)=>a+(+s.reps||0),0);
+        lastSummary=avgSec?`Last ${dateStr}: ${avgSec}s × ${totalRounds||done.length}`:`Last ${dateStr}: ${done.length} round${done.length===1?'':'s'}`;
+      }else{
+        const maxW=Math.max(...done.map(s=>+s.weight||0));
+        const avgR=Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length);
+        lastSummary=`Last ${dateStr}: ${done.length}×${avgR} @ ${maxW||''}${maxW?' lb':''}`;
+      }
     }
   }
+  // Pair picker row — lets the user reassign pair colour per exercise.
+  const pairPicker=['A','B','C','D','E','F'].map(k=>{
+    const active=k===ex.pair;
+    return `<button class="w-ex-pair" data-ei="${ei}" data-pair="${k}" style="flex:0 0 26px;background:${PAIR_COLORS[k]};color:#fff;border:${active?'2px solid var(--text)':'1px solid transparent'};border-radius:6px;padding:3px 0;font-family:'Fraunces',serif;font-size:11px;font-weight:700;cursor:pointer;opacity:${active?1:.65}">${k}</button>`;
+  }).join('');
+  const clearPairBtn=`<button class="w-ex-pair" data-ei="${ei}" data-pair="" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">no pair</button>`;
+  const muscleLine=ex.muscle?`<div style="font-size:10px;color:var(--muted);margin-top:3px"><span style="color:var(--text-soft);font-weight:600">Works:</span> ${ex.muscle} <button class="w-ex-info" data-ei="${ei}" title="More info / suggest replacement" style="margin-left:4px;background:none;border:1px solid var(--border);color:var(--plum);border-radius:5px;padding:1px 6px;font-size:10px;cursor:pointer">ℹ</button></div>`:'';
   return `
   <div style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-pop)">
     <div class="w-ex-row" data-ei="${ei}" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;cursor:pointer">
@@ -4262,14 +4306,21 @@ function renderExerciseCard(ex,ei){
             <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
             <span style="color:var(--muted)">${ex.reps} · ${rest}</span>
           </div>
+          ${muscleLine}
           ${lastSummary?`<div style="font-size:10px;color:var(--plum);margin-top:3px;font-weight:600">${lastSummary}</div>`:''}
         </div>
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
-        <button class="w-ex-swap" data-ei="${ei}" title="Swap exercise" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:6px">↔</button>
-        <button class="w-ex-rm" data-ei="${ei}" title="Remove from today" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px">✕</button>
-        <span style="font-size:11px;color:var(--muted);padding:4px 6px">▴</span>
+      <div style="display:flex;gap:3px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:90px">
+        <button class="w-ex-up" data-ei="${ei}" title="Move up" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:3px 7px;border-radius:6px">↑</button>
+        <button class="w-ex-down" data-ei="${ei}" title="Move down" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:3px 7px;border-radius:6px">↓</button>
+        <button class="w-ex-swap" data-ei="${ei}" title="Swap exercise" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:3px 7px;border-radius:6px">↔</button>
+        <button class="w-ex-rm" data-ei="${ei}" title="Remove from today" style="background:none;border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:12px;padding:3px 7px;border-radius:6px">✕</button>
       </div>
+    </div>
+    <div style="display:flex;gap:4px;align-items:center;margin-top:8px;flex-wrap:wrap">
+      <span style="font-size:10px;color:var(--muted);margin-right:2px">Pair:</span>
+      ${pairPicker}
+      ${clearPairBtn}
     </div>
     <div style="margin-top:10px">${setRows}</div>
     <button class="w-ex-addset" data-ei="${ei}" style="width:100%;margin-top:4px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:6px;border-radius:8px;font-family:inherit">+ another set</button>
@@ -4297,6 +4348,49 @@ function bindWorkoutInlineInputs(){
   el.querySelectorAll('.w-ex-swap').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();openExercisePicker(+ev.currentTarget.dataset.ei)}));
   el.querySelectorAll('.w-ex-rm').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();removeExerciseFromSession(+ev.currentTarget.dataset.ei)}));
   el.querySelectorAll('.w-ex-addset').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();addSetToExercise(+ev.currentTarget.dataset.ei)}));
+  el.querySelectorAll('.w-ex-up').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();moveExercise(+ev.currentTarget.dataset.ei,-1)}));
+  el.querySelectorAll('.w-ex-down').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();moveExercise(+ev.currentTarget.dataset.ei,1)}));
+  el.querySelectorAll('.w-ex-pair').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();setExercisePair(+ev.currentTarget.dataset.ei,ev.currentTarget.dataset.pair)}));
+  el.querySelectorAll('.w-ex-info').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();openExerciseInfo(+ev.currentTarget.dataset.ei)}));
+}
+
+function moveExercise(ei,dir){
+  if(!activeWorkoutSession)return;
+  const arr=activeWorkoutSession.exercises;
+  const j=ei+dir;
+  if(j<0||j>=arr.length)return;
+  [arr[ei],arr[j]]=[arr[j],arr[ei]];
+  if(expandedExIdx===ei)expandedExIdx=j;
+  else if(expandedExIdx===j)expandedExIdx=ei;
+  S('fl_wkt_sessions',workoutSessions);
+  renderWorkoutBody();
+}
+
+function setExercisePair(ei,pair){
+  if(!activeWorkoutSession)return;
+  const ex=activeWorkoutSession.exercises[ei];if(!ex)return;
+  ex.pair=pair||'';
+  S('fl_wkt_sessions',workoutSessions);
+  renderWorkoutBody();
+}
+
+async function openExerciseInfo(ei){
+  if(!activeWorkoutSession)return;
+  const ex=activeWorkoutSession.exercises[ei];if(!ex)return;
+  const hasKey=goals.apiKey&&goals.apiKey.startsWith('sk-ant');
+  // Collect other exercises in today's workout so we can avoid same-muscle supersets.
+  const otherMuscles=activeWorkoutSession.exercises.filter((e,i)=>i!==ei&&e.muscle).map(e=>`${e.name} (${e.muscle})`).join(', ');
+  const baseInfo=`${ex.name}\nType: ${ex.type}\nTarget: ${ex.reps} reps, rest ${ex.rest?Math.round(ex.rest/60*10)/10+' min':'none'}\nMuscles: ${ex.muscle||'—'}`;
+  if(!hasKey){alert(baseInfo+'\n\nAdd your Anthropic API key in Goals for AI replacement suggestions.');return;}
+  const ok=confirm(baseInfo+'\n\nAsk Claude for a replacement suggestion and a superset-friendly pair?');
+  if(!ok)return;
+  toast('Asking Claude…',2000);
+  try{
+    const prompt=`You are a strength coach. Suggest 2-3 good replacement exercises for the one the user picked, and for each, note which muscle group it works. Then suggest 1-2 exercises that would pair well for a superset (different muscle group to avoid overlap). Keep it brief — a short bulleted reply.`;
+    const user=`Exercise to replace: ${ex.name} (${ex.muscle||ex.type})\nToday's other exercises: ${otherMuscles||'(none)'}\nGoal: ${ex.type==='strength'?'progressive overload':'hypertrophy'}`;
+    const r=await callClaude(prompt,user);
+    alert(baseInfo+'\n\n— Claude —\n'+r);
+  }catch(e){alert(baseInfo+'\n\nAI error: '+(e.message||'check connection'));}
 }
 
 function copySetFromAbove(ei,si){
@@ -4400,7 +4494,7 @@ function insertExerciseIntoSession(ex){
   if(!activeWorkoutSession)return;
   const n=Math.max(1,+ex.sets||5);
   const sets=[];for(let i=0;i<n;i++)sets.push({weight:0,reps:0,skipped:false});
-  const newEx={name:ex.name,type:ex.type||'hypertrophy',reps:ex.reps||'8-12',rest:+ex.rest||90,unit:ex.unit||'lbs',sets};
+  const newEx={name:ex.name,type:ex.type||'hypertrophy',reps:ex.reps||'8-12',rest:+ex.rest||90,unit:ex.unit||'lbs',pair:ex.pair||'',muscle:ex.muscle||'',sets};
   if(wkoutEditExerciseIdx>=0&&activeWorkoutSession.exercises[wkoutEditExerciseIdx]){
     activeWorkoutSession.exercises[wkoutEditExerciseIdx]=newEx;
   }else{
