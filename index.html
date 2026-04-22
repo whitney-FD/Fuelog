@@ -4183,16 +4183,17 @@ function buildProgressSeries(){
     const ts=new Date(s.date).getTime();
     if(isNaN(ts)||ts<cutoff)return;
     s.exercises.forEach(e=>{
+      // Mobility is flexibility, not a progression metric — skip it entirely.
+      if(e.type==='mobility')return;
       const done=(e.sets||[]).filter(x=>!x.skipped&&(x.weight||x.reps));
       if(!done.length)return;
       const topWeight=Math.max(0,...done.map(x=>+x.weight||0));
       const totalReps=done.reduce((a,x)=>a+(+x.reps||0),0);
       const volume=done.reduce((a,x)=>a+(+x.weight||0)*(+x.reps||0),0);
-      if(!byName[e.name])byName[e.name]={name:e.name,type:e.type,muscle:e.muscle,points:[]};
+      if(!byName[e.name])byName[e.name]={name:e.name,type:e.type,muscle:e.muscle,reps:e.reps,points:[]};
       byName[e.name].points.push({date:s.date,ts,topWeight,totalReps,volume});
     });
   });
-  // Sort points ascending by date per exercise.
   Object.values(byName).forEach(ex=>ex.points.sort((a,b)=>a.ts-b.ts));
   return Object.values(byName).sort((a,b)=>b.points.length-a.points.length);
 }
@@ -4222,8 +4223,14 @@ function renderExerciseChart(ex){
   const y=i=>{const v=vals[i];const range=max-min||1;return H-P-((v-min)/range)*(H-2*P);};
   const polyPts=pts.map((_,i)=>`${x(i).toFixed(1)},${y(i).toFixed(1)}`).join(' ');
   const dots=pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(i).toFixed(1)}" r="3" fill="var(--plum)"><title>${new Date(p.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}: ${vals[i]}</title></circle>`).join('');
-  const metricLabel=progressMetric==='weight'?'top set (lb)':progressMetric==='reps'?'total reps':'volume (lb·reps)';
-  const lastLabel=progressMetric==='weight'?`${last} lb`:progressMetric==='reps'?`${last} reps`:`${last}`;
+  const isTimedEx=/sec/i.test(String(ex.reps||''));
+  const metricLabel=progressMetric==='weight'
+    ?'top set (lb)'
+    :progressMetric==='reps'
+      ?(isTimedEx?'total seconds':'total reps')
+      :(isTimedEx?'volume (lb·sec)':'volume (lb·reps)');
+  const lastUnit=progressMetric==='weight'?' lb':progressMetric==='reps'?(isTimedEx?'s':' reps'):'';
+  const lastLabel=`${last}${lastUnit}`;
   const muscleLine=ex.muscle?`<span style="color:var(--muted);font-size:10px">${ex.muscle}</span>`:'';
   return `
   <div style="margin-bottom:12px;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-soft)">
@@ -4353,15 +4360,14 @@ function renderExerciseCard(ex,ei){
     const setCells=ex.sets.map((set,si)=>{
       const skip=!!set.skipped;
       const w=+set.weight||0,r=+set.reps||0;
-      const filled=!skip&&(w||r);
+      const completed=!!set.completed;
+      const filled=!skip&&(completed||w||r);
       let text='·';
       if(skip)text='—';
       else if(filled){
         if(isMob){
-          // On mobility, weight field stores seconds; reps stores rounds/sides.
-          if(w&&r)text=`${w}s×${r}`;
-          else if(w)text=`${w}s`;
-          else if(r)text=`×${r}`;
+          // Mobility = flexibility check-in; just a ✓ once per set.
+          text='✓';
         }else if(isTimed){
           // Weighted hold: weight in lb, reps field stores seconds held.
           if(w&&r)text=`${w}×${r}s`;
@@ -4390,20 +4396,26 @@ function renderExerciseCard(ex,ei){
     </div>`;
   }
 
-  // EXPANDED editor. Mobility swaps weight for a seconds input and labels
-  // the reps column "rounds" (e.g. Hip Flexor Stretch: 30s × 2 sides).
+  // EXPANDED editor. Mobility = flexibility: just a "did it" toggle per set.
+  // Timed holds (Weighted Plank): weight + seconds. Others: weight + reps.
   const setRows=ex.sets.map((set,si)=>{
     const skip=!!set.skipped;
+    if(isMob){
+      const done=!!set.completed;
+      return `
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px${skip?';opacity:.55':''}">
+        <span style="flex:0 0 22px;font-size:11px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
+        <button class="w-mob-done" data-ei="${ei}" data-si="${si}" style="flex:1;background:${done?'var(--g-teal)':'var(--s1)'};border:1px solid ${done?'transparent':'var(--border)'};color:${done?'#fff':'var(--text-soft)'};border-radius:8px;padding:9px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.02em">${done?'✓ Did it':'Tap to mark done'}</button>
+        <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
+      </div>`;
+    }
     const weight=set.weight||'';
     const reps=set.reps||'';
-    const wPlaceholder=isMob?'sec':'lb';
-    const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${wPlaceholder}" inputmode="${isMob?'numeric':'decimal'}" step="${isMob?1:0.5}" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
-    const wPlusBtn=isMob
-      ? `<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 40px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
-      : `<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
-    // Reps column: label is "rnds" on mobility, "sec" on timed holds, "reps" otherwise.
-    const repsPlaceholder=isMob?'rnds':isTimed?'sec':'reps';
-    // Matching +/-button for the reps column. +15s on timed holds (same as mobility seconds), +1 on everything else.
+    const wPlaceholder='lb';
+    const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${wPlaceholder}" inputmode="decimal" step="0.5" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+    const wPlusBtn=`<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
+    // Reps column: "sec" on timed holds, "reps" otherwise.
+    const repsPlaceholder=isTimed?'sec':'reps';
     const rPlusBtn=isTimed
       ? `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
       : `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="1" title="Add 1 rep" style="flex:0 0 30px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+1</button>`;
@@ -4424,17 +4436,22 @@ function renderExerciseCard(ex,ei){
   const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
   let lastSummary='';
   if(lastEx){
-    const done=lastEx.sets.filter(s=>!s.skipped&&(s.weight||s.reps));
-    if(done.length){
-      const dateStr=new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      if(isMob){
-        const avgSec=Math.round(done.reduce((a,s)=>a+(+s.weight||0),0)/done.length);
-        const totalRounds=done.reduce((a,s)=>a+(+s.reps||0),0);
-        lastSummary=avgSec?`Last ${dateStr}: ${avgSec}s × ${totalRounds||done.length}`:`Last ${dateStr}: ${done.length} round${done.length===1?'':'s'}`;
-      }else{
-        const maxW=Math.max(...done.map(s=>+s.weight||0));
-        const avgR=Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length);
-        lastSummary=`Last ${dateStr}: ${done.length}×${avgR} @ ${maxW||''}${maxW?' lb':''}`;
+    const dateStr=new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    if(isMob){
+      const doneCount=lastEx.sets.filter(s=>!s.skipped&&(s.completed||s.weight||s.reps)).length;
+      if(doneCount)lastSummary=`Last ${dateStr}: ${doneCount} set${doneCount===1?'':'s'} done ✓`;
+    }else{
+      const done=lastEx.sets.filter(s=>!s.skipped&&(s.weight||s.reps));
+      if(done.length){
+        if(isTimed){
+          const maxW=Math.max(...done.map(s=>+s.weight||0));
+          const avgSec=Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length);
+          lastSummary=`Last ${dateStr}: ${done.length}×${avgSec}s @ ${maxW||''}${maxW?' lb':''}`;
+        }else{
+          const maxW=Math.max(...done.map(s=>+s.weight||0));
+          const avgR=Math.round(done.reduce((a,s)=>a+(+s.reps||0),0)/done.length);
+          lastSummary=`Last ${dateStr}: ${done.length}×${avgR} @ ${maxW||''}${maxW?' lb':''}`;
+        }
       }
     }
   }
@@ -4489,6 +4506,14 @@ function bindWorkoutInlineInputs(){
       renderWorkoutBody();
     });
   });
+  el.querySelectorAll('.w-mob-done').forEach(b=>b.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    const ei=+ev.currentTarget.dataset.ei,si=+ev.currentTarget.dataset.si;
+    const s=activeWorkoutSession.exercises[ei].sets[si];
+    s.completed=!s.completed;s.skipped=false;
+    S('fl_wkt_sessions',workoutSessions);
+    renderWorkoutBody();
+  }));
   el.querySelectorAll('.w-set-w').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'weight',+ev.target.value||0)));
   el.querySelectorAll('.w-set-r').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'reps',+ev.target.value||0)));
   el.querySelectorAll('.w-set-skip').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();toggleSetSkipped(+ev.currentTarget.dataset.ei,+ev.currentTarget.dataset.si)}));
