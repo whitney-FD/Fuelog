@@ -615,11 +615,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="page-title">WORKOUT<span> LOG</span></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button id="w-prev-day" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">‹</button>
-        <div id="w-date-sub" style="font-size:12px;color:var(--muted);text-align:center;min-width:130px"></div>
+        <button id="w-today-btn" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);font-family:'Fraunces',serif;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.08em">TODAY</button>
         <button id="w-next-day" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">›</button>
       </div>
     </div>
-    <div class="page-sub">Pick today's day — last week's numbers auto-load</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+      <div class="page-sub" id="w-date-sub" style="margin:0"></div>
+      <button id="w-progress-btn" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📈 Progress</button>
+    </div>
   </div>
 
   <div id="w-day-chips" style="display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none"></div>
@@ -666,6 +669,30 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <input class="field-input" type="text" id="template-name" placeholder="e.g. Push & Pull Combo">
     <button class="btn-full" id="btn-save-template" style="background:var(--g-teal);color:#fff">Save template</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-save-template')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: WORKOUT PROGRESS GRAPHS -->
+<div class="overlay" id="overlay-progress" onclick="closeOverlay('overlay-progress')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;margin:0 auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📈 Progress</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <input id="prog-search" class="field-input" type="text" placeholder="Search exercises…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="flex:1;margin:0;min-width:180px">
+      <select id="prog-range" class="field-input" style="flex:0 0 110px;margin:0">
+        <option value="30">Last 30 days</option>
+        <option value="90" selected>Last 90 days</option>
+        <option value="180">Last 6 months</option>
+        <option value="9999">All time</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="w-prog-metric" data-metric="weight" style="flex:1;background:var(--g-teal);color:#fff;border:none;border-radius:8px;padding:7px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.08em;text-transform:uppercase">Top weight</button>
+      <button class="w-prog-metric" data-metric="reps" style="flex:1;background:var(--s1);color:var(--text-soft);border:1px solid var(--border);border-radius:8px;padding:7px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.08em;text-transform:uppercase">Total reps</button>
+      <button class="w-prog-metric" data-metric="volume" style="flex:1;background:var(--s1);color:var(--text-soft);border:1px solid var(--border);border-radius:8px;padding:7px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.08em;text-transform:uppercase">Volume</button>
+    </div>
+    <div id="prog-list" style="max-height:60vh;overflow-y:auto"></div>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-progress')" style="margin-top:10px">Done</button>
   </div>
 </div>
 
@@ -4098,15 +4125,123 @@ function renderWorkoutScreen(){
   const dateEl=document.getElementById('w-date-sub');
   if(dateEl){
     const d=new Date(activeWorkoutDate);
-    dateEl.textContent=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    dateEl.textContent=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   }
-  // Bind prev/next date buttons once
+  // Bind prev/next/today/progress once
   const prev=document.getElementById('w-prev-day');
   const next=document.getElementById('w-next-day');
+  const today=document.getElementById('w-today-btn');
+  const prog=document.getElementById('w-progress-btn');
   if(prev&&!prev._bound){prev._bound=true;prev.addEventListener('click',()=>shiftWorkoutDate(-1));}
   if(next&&!next._bound){next._bound=true;next.addEventListener('click',()=>shiftWorkoutDate(1));}
+  if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;renderWorkoutScreen();});}
+  if(prog&&!prog._bound){prog._bound=true;prog.addEventListener('click',openProgressView);}
   renderWorkoutDayChips();
   renderWorkoutBody();
+}
+
+// ══ WORKOUT PROGRESS VIEW ══
+let progressMetric='weight'; // 'weight' | 'reps' | 'volume'
+let progressRangeDays=90;
+let progressSearch='';
+
+function openProgressView(){
+  openOverlay('overlay-progress');
+  // Bind overlay controls once.
+  const search=document.getElementById('prog-search');
+  if(search&&!search._bound){
+    search._bound=true;
+    let t=null;
+    search.addEventListener('input',()=>{progressSearch=search.value.toLowerCase().trim();clearTimeout(t);t=setTimeout(renderProgressList,120);});
+  }
+  const range=document.getElementById('prog-range');
+  if(range&&!range._bound){
+    range._bound=true;
+    range.addEventListener('change',()=>{progressRangeDays=+range.value||90;renderProgressList();});
+  }
+  document.querySelectorAll('.w-prog-metric').forEach(btn=>{
+    if(btn._bound)return;btn._bound=true;
+    btn.addEventListener('click',ev=>{
+      progressMetric=ev.currentTarget.dataset.metric;
+      document.querySelectorAll('.w-prog-metric').forEach(b=>{
+        const on=b.dataset.metric===progressMetric;
+        b.style.background=on?'var(--g-teal)':'var(--s1)';
+        b.style.color=on?'#fff':'var(--text-soft)';
+        b.style.border=on?'none':'1px solid var(--border)';
+      });
+      renderProgressList();
+    });
+  });
+  renderProgressList();
+}
+
+// Group logged sessions by exercise name, flatten into {date, topWeight, totalReps, volume} points.
+function buildProgressSeries(){
+  const cutoff=Date.now()-progressRangeDays*86400000;
+  const byName={};
+  workoutSessions.forEach(s=>{
+    const ts=new Date(s.date).getTime();
+    if(isNaN(ts)||ts<cutoff)return;
+    s.exercises.forEach(e=>{
+      const done=(e.sets||[]).filter(x=>!x.skipped&&(x.weight||x.reps));
+      if(!done.length)return;
+      const topWeight=Math.max(0,...done.map(x=>+x.weight||0));
+      const totalReps=done.reduce((a,x)=>a+(+x.reps||0),0);
+      const volume=done.reduce((a,x)=>a+(+x.weight||0)*(+x.reps||0),0);
+      if(!byName[e.name])byName[e.name]={name:e.name,type:e.type,muscle:e.muscle,points:[]};
+      byName[e.name].points.push({date:s.date,ts,topWeight,totalReps,volume});
+    });
+  });
+  // Sort points ascending by date per exercise.
+  Object.values(byName).forEach(ex=>ex.points.sort((a,b)=>a.ts-b.ts));
+  return Object.values(byName).sort((a,b)=>b.points.length-a.points.length);
+}
+
+function renderProgressList(){
+  const el=document.getElementById('prog-list');
+  const all=buildProgressSeries();
+  const list=progressSearch?all.filter(x=>x.name.toLowerCase().includes(progressSearch)||(x.muscle||'').toLowerCase().includes(progressSearch)):all;
+  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:24px 0">No logged sessions in range. Log a few workouts first, then chart will populate.</div>';return;}
+  el.innerHTML=list.map(ex=>renderExerciseChart(ex)).join('');
+}
+
+// Compact inline SVG line chart. Accessible-ish via title text, tap-friendly on mobile.
+function renderExerciseChart(ex){
+  const pts=ex.points;
+  if(!pts.length)return '';
+  const vals=pts.map(p=>progressMetric==='weight'?p.topWeight:progressMetric==='reps'?p.totalReps:p.volume);
+  const max=Math.max(...vals,1);
+  const min=Math.min(...vals,0);
+  const first=vals[0],last=vals[vals.length-1];
+  const delta=first?Math.round(((last-first)/first)*100):0;
+  const deltaClr=delta>0?'var(--lime)':delta<0?'var(--red)':'var(--muted)';
+  const deltaSign=delta>0?'+':'';
+  const W=320,H=90,P=8;
+  const span=Math.max(1,pts[pts.length-1].ts-pts[0].ts);
+  const x=i=>pts.length===1?W/2:P+((pts[i].ts-pts[0].ts)/span)*(W-2*P);
+  const y=i=>{const v=vals[i];const range=max-min||1;return H-P-((v-min)/range)*(H-2*P);};
+  const polyPts=pts.map((_,i)=>`${x(i).toFixed(1)},${y(i).toFixed(1)}`).join(' ');
+  const dots=pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(i).toFixed(1)}" r="3" fill="var(--plum)"><title>${new Date(p.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}: ${vals[i]}</title></circle>`).join('');
+  const metricLabel=progressMetric==='weight'?'top set (lb)':progressMetric==='reps'?'total reps':'volume (lb·reps)';
+  const lastLabel=progressMetric==='weight'?`${last} lb`:progressMetric==='reps'?`${last} reps`:`${last}`;
+  const muscleLine=ex.muscle?`<span style="color:var(--muted);font-size:10px">${ex.muscle}</span>`:'';
+  return `
+  <div style="margin-bottom:12px;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-soft)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+      <div style="min-width:0;flex:1">
+        <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.name}</div>
+        <div style="display:flex;gap:8px;font-size:10px;color:var(--muted);margin-top:2px">${metricLabel} · ${pts.length} session${pts.length===1?'':'s'}${muscleLine?' · ':''}${muscleLine}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);line-height:1">${lastLabel}</div>
+        ${pts.length>1?`<div style="font-size:10px;color:${deltaClr};font-weight:700">${deltaSign}${delta}%</div>`:''}
+      </div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;background:var(--s1);border-radius:8px">
+      <polyline points="${polyPts}" fill="none" stroke="var(--teal-bright)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+    </svg>
+  </div>`;
 }
 
 function shiftWorkoutDate(delta){
@@ -4199,6 +4334,10 @@ function pairInfo(ex,ei){
 function renderExerciseCard(ex,ei){
   const isMob=ex.type==='mobility';
   const isStr=ex.type==='strength';
+  // "Timed" exercises — weighted holds like Weighted Plank (type=hypertrophy
+  // but reps target is in seconds). Detect by 'sec' in reps string. These
+  // get weight+seconds inputs instead of weight+reps.
+  const isTimed=!isMob&&/sec/i.test(String(ex.reps||''));
   const badgeColor=isStr?'var(--coral)':isMob?'var(--plum)':'var(--teal-deep)';
   const badgeLabel=isStr?'Strength':isMob?'Mobility':'Hypertrophy';
   const rest=ex.rest?`${Math.round(ex.rest/60*10)/10} min rest`:'no rest';
@@ -4223,6 +4362,11 @@ function renderExerciseCard(ex,ei){
           if(w&&r)text=`${w}s×${r}`;
           else if(w)text=`${w}s`;
           else if(r)text=`×${r}`;
+        }else if(isTimed){
+          // Weighted hold: weight in lb, reps field stores seconds held.
+          if(w&&r)text=`${w}×${r}s`;
+          else if(r)text=`${r}s`;
+          else if(w)text=`${w}`;
         }else{
           text=`${w||0}×${r||0}`;
         }
@@ -4252,22 +4396,28 @@ function renderExerciseCard(ex,ei){
     const skip=!!set.skipped;
     const weight=set.weight||'';
     const reps=set.reps||'';
-    const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${isMob?'sec':'lb'}" inputmode="${isMob?'numeric':'decimal'}" step="${isMob?1:0.5}" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
-    const plusBtn=isMob
+    const wPlaceholder=isMob?'sec':'lb';
+    const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${wPlaceholder}" inputmode="${isMob?'numeric':'decimal'}" step="${isMob?1:0.5}" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
+    const wPlusBtn=isMob
       ? `<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 40px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
       : `<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
-    const xLabel=isMob?'×':'×';
-    const repsPlaceholder=isMob?'rnds':'reps';
+    // Reps column: label is "rnds" on mobility, "sec" on timed holds, "reps" otherwise.
+    const repsPlaceholder=isMob?'rnds':isTimed?'sec':'reps';
+    // Matching +/-button for the reps column. +15s on timed holds (same as mobility seconds), +1 on everything else.
+    const rPlusBtn=isTimed
+      ? `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
+      : `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="1" title="Add 1 rep" style="flex:0 0 30px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+1</button>`;
     const canCopy=si>0;
     return `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px${skip?';opacity:.55':''}">
-      <span style="flex:0 0 22px;font-size:11px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
+    <div style="display:flex;gap:5px;align-items:center;margin-bottom:5px${skip?';opacity:.55':''}">
+      <span style="flex:0 0 20px;font-size:11px;color:var(--muted);font-weight:700;text-align:right">${si+1}</span>
       ${weightInput}
-      ${plusBtn}
-      <span style="color:var(--muted);font-size:13px;flex:0 0 8px">${xLabel}</span>
+      ${wPlusBtn}
+      <span style="color:var(--muted);font-size:13px;flex:0 0 8px">×</span>
       <input type="number" class="w-set-r" data-ei="${ei}" data-si="${si}" value="${reps}" placeholder="${repsPlaceholder}" inputmode="numeric" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">
-      ${canCopy?`<button class="w-set-copy" data-ei="${ei}" data-si="${si}" title="Copy from set ${si}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:var(--plum);cursor:pointer">↑</button>`:'<span style="flex:0 0 30px"></span>'}
-      <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 30px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
+      ${rPlusBtn}
+      ${canCopy?`<button class="w-set-copy" data-ei="${ei}" data-si="${si}" title="Copy from set ${si}" style="flex:0 0 28px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:var(--plum);cursor:pointer">↑</button>`:'<span style="flex:0 0 28px"></span>'}
+      <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 28px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
     </div>`;
   }).join('');
   const last=lastSessionFor(activeWorkoutDayId);
