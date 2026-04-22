@@ -3380,14 +3380,10 @@ function editPastEntry(dateStr,id){
   openOverlay('overlay-edit');
 }
 
-// Override saveEditEntry to handle past day edits
-const _origSaveEdit=saveEditEntry;
 function saveEditEntry(){
   const pastDay=document.getElementById('overlay-edit').dataset.pastDay;
-  if(pastDay){
-    const dayEntries=J('fl_e_'+pastDay,[]);
-    const e=dayEntries.find(x=>x.id===editEntryId);if(!e){closeOverlay('overlay-edit');return;}
-    const qty=+document.getElementById('edit-qty').value||1;
+  const qty=+document.getElementById('edit-qty').value||1;
+  const apply=e=>{
     e.name=document.getElementById('edit-name').value;
     e.slot=document.getElementById('edit-slot').value;
     e.cal=Math.round(+document.getElementById('edit-cal').value*qty);
@@ -3396,6 +3392,16 @@ function saveEditEntry(){
     e.fat=Math.round(+document.getElementById('edit-fat').value*qty*10)/10;
     e.fiber=Math.round(+document.getElementById('edit-fiber').value*qty*10)/10;
     e.vita=Math.round(+document.getElementById('edit-vita').value*qty);
+    // Clear the AI low-confidence flag and warning note once the user has
+    // reviewed/edited — they've taken ownership of the numbers.
+    if(e.conf==='low')e.conf='medium';
+    e.note='';
+  };
+  if(pastDay){
+    const dayEntries=J('fl_e_'+pastDay,[]);
+    const e=dayEntries.find(x=>x.id===editEntryId);
+    if(!e){closeOverlay('overlay-edit');return;}
+    apply(e);
     S('fl_e_'+pastDay,dayEntries);
     document.getElementById('overlay-edit').dataset.pastDay='';
     closeOverlay('overlay-edit');
@@ -3403,7 +3409,13 @@ function saveEditEntry(){
     buildWeek();
     toast('Entry updated');
   }else{
-    _origSaveEdit();
+    const e=entries.find(x=>x.id===editEntryId);
+    if(!e){closeOverlay('overlay-edit');toast('Entry not found');return;}
+    apply(e);
+    S('fl_e_'+getActiveDayKey(),entries);
+    closeOverlay('overlay-edit');
+    render();buildWeek();
+    toast('Entry updated');
   }
 }
 
