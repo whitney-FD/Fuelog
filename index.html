@@ -625,6 +625,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
+  <div style="padding:0 16px 6px"><select id="w-day-select" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist"></select></div>
   <div id="w-day-chips" style="display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none"></div>
 
   <div id="w-screen-body" style="padding:0 16px 20px"></div>
@@ -1468,6 +1469,16 @@ if(!Array.isArray(workoutRoutines)||!workoutRoutines.length){
   if(sessionsChanged)S('fl_wkt_sessions',workoutSessions);
   localStorage.setItem('fl_wkt_muscles_v1','1');
   localStorage.setItem('fl_wkt_pairs_v1','1');
+}
+if(!localStorage.getItem('fl_wkt_prune_empty_v1')){
+  // One-time prune: earlier chip-taps created empty phantom sessions. Drop
+  // any session whose exercises all have zero work logged — user never
+  // actually did them.
+  const hasAnyData=s=>(s.exercises||[]).some(e=>(e.sets||[]).some(x=>x.skipped||x.completed||+x.weight||+x.reps));
+  const before=workoutSessions.length;
+  workoutSessions=workoutSessions.filter(hasAnyData);
+  if(workoutSessions.length!==before)S('fl_wkt_sessions',workoutSessions);
+  localStorage.setItem('fl_wkt_prune_empty_v1','1');
 }
 let activeWorkoutDayId=null; // which routine the user picked today
 let activeWorkoutSession=null; // { id, date, dayId, dayName, exercises:[{name,type,reps,sets:[{weight,reps,skipped}]}], notes }
@@ -4107,13 +4118,40 @@ function lastSessionFor(dayId){
 }
 
 // Find or create the session for the currently-active day and date.
+// Does this session have any logged work? Used to decide whether a session
+// is "real" and should be persisted. Merely picking a Day chip to preview
+// it should NOT pollute history.
+function sessionHasData(s){
+  if(!s||!Array.isArray(s.exercises))return false;
+  return s.exercises.some(e=>(e.sets||[]).some(set=>set.skipped||set.completed||+set.weight||+set.reps));
+}
+// Commit the active session to workoutSessions + localStorage. Call this
+// after any real data change. If it's still a draft (not yet in the array),
+// push it now. Callers don't need to check — safe to call any time.
+function commitActiveSession(){
+  if(!activeWorkoutSession)return;
+  const idx=workoutSessions.indexOf(activeWorkoutSession);
+  if(idx<0)workoutSessions.push(activeWorkoutSession);
+  S('fl_wkt_sessions',workoutSessions);
+}
+// Discard the active session IF it's still a draft (never committed, no data).
+// Called when switching to a different day so empty previews don't linger.
+function discardDraftSessionIfEmpty(){
+  if(!activeWorkoutSession)return;
+  if(workoutSessions.includes(activeWorkoutSession))return; // already real
+  if(sessionHasData(activeWorkoutSession))return; // user edited sth we shouldn't throw away
+  activeWorkoutSession=null;
+}
+
 function ensureActiveSession(){
   if(!activeWorkoutDayId)return null;
   const routine=workoutRoutines.find(r=>r.id===activeWorkoutDayId);
   if(!routine)return null;
   let s=workoutSessions.find(x=>x.date===activeWorkoutDate&&x.dayId===activeWorkoutDayId);
   if(s){activeWorkoutSession=s;return s;}
-  // Build a fresh session from the routine template, pre-filling last-week values.
+  // Build a fresh draft session from the routine template, pre-filling last-
+  // week values. Only committed to workoutSessions once the user actually
+  // logs something — avoids creating phantom empty sessions from chip-tapping.
   const last=lastSessionFor(activeWorkoutDayId);
   const exercises=routine.exercises.map(ex=>{
     const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
@@ -4126,9 +4164,8 @@ function ensureActiveSession(){
     return{name:ex.name,type:ex.type,reps:ex.reps,rest:ex.rest,unit:ex.unit||'lbs',pair:ex.pair||'',muscle:ex.muscle||'',sets};
   });
   s={id:Date.now(),date:activeWorkoutDate,dayId:activeWorkoutDayId,dayName:routine.name,exercises,notes:''};
-  workoutSessions.push(s);
-  S('fl_wkt_sessions',workoutSessions);
   activeWorkoutSession=s;
+  // NOT pushed to workoutSessions yet — still a draft.
   return s;
 }
 
@@ -4146,7 +4183,7 @@ function renderWorkoutScreen(){
   const prog=document.getElementById('w-progress-btn');
   if(prev&&!prev._bound){prev._bound=true;prev.addEventListener('click',()=>shiftWorkoutDate(-1));}
   if(next&&!next._bound){next._bound=true;next.addEventListener('click',()=>shiftWorkoutDate(1));}
-  if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;renderWorkoutScreen();});}
+  if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{discardDraftSessionIfEmpty();activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;renderWorkoutScreen();});}
   if(prog&&!prog._bound){prog._bound=true;prog.addEventListener('click',openProgressView);}
   renderWorkoutDayChips();
   renderWorkoutBody();
@@ -4264,6 +4301,7 @@ function renderExerciseChart(ex){
 }
 
 function shiftWorkoutDate(delta){
+  discardDraftSessionIfEmpty();
   const d=new Date(activeWorkoutDate);d.setDate(d.getDate()+delta);
   activeWorkoutDate=d.toDateString();
   activeWorkoutDayId=null;activeWorkoutSession=null;
@@ -4290,11 +4328,22 @@ function renderWorkoutDayChips(){
   el.querySelectorAll('[data-wday]').forEach(chip=>{
     chip.addEventListener('click',()=>{pickWorkoutDay(chip.dataset.wday);});
   });
+  // Dropdown mirrors the chips for users who prefer a selector.
+  const sel=document.getElementById('w-day-select');
+  if(sel){
+    sel.innerHTML='<option value="">-- Pick a day --</option>'+workoutRoutines.map(r=>{
+      const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
+      return `<option value="${r.id}" ${r.id===activeWorkoutDayId?'selected':''}>${logged?'✓ ':''}${r.name}</option>`;
+    }).join('');
+    if(!sel._bound){sel._bound=true;sel.addEventListener('change',()=>{if(sel.value)pickWorkoutDay(sel.value);});}
+  }
 }
 
 function pickWorkoutDay(dayId){
+  // If the user was previewing a different day but hadn't logged anything,
+  // drop that draft so we don't leave orphaned empty sessions behind.
+  if(activeWorkoutDayId&&activeWorkoutDayId!==dayId)discardDraftSessionIfEmpty();
   activeWorkoutDayId=dayId;
-  // Start or pick up today's session for this day
   ensureActiveSession();
   renderWorkoutDayChips();
   renderWorkoutBody();
@@ -4341,6 +4390,24 @@ function renderWorkoutBody(){
 // supersetting at a glance (mirrors the colour grouping in their spreadsheet).
 const PAIR_COLORS={A:'#1FC2C0',B:'#F94892',C:'#FFC857',D:'#6F4BBF',E:'#FF9B42',F:'#4FB880'};
 const PAIR_TINTS={A:'rgba(31,194,192,.08)',B:'rgba(249,72,146,.08)',C:'rgba(255,200,87,.12)',D:'rgba(111,75,191,.08)',E:'rgba(255,155,66,.10)',F:'rgba(79,184,128,.10)'};
+// Look through all sessions for the most recent date this specific exercise
+// was trained. Ignores today's draft so "done today" doesn't show on the
+// very session you're currently logging. Used for the "rested Nd" nudge.
+function lastTrainedDaysAgo(exerciseName){
+  let latest=-Infinity;
+  workoutSessions.forEach(s=>{
+    if(s===activeWorkoutSession)return;
+    const ts=new Date(s.date).getTime();
+    if(!isFinite(ts))return;
+    const ex=(s.exercises||[]).find(e=>e.name===exerciseName);
+    if(!ex)return;
+    const did=(ex.sets||[]).some(x=>x.completed||x.skipped||+x.weight||+x.reps);
+    if(did&&ts>latest)latest=ts;
+  });
+  if(!isFinite(latest))return null;
+  const today=new Date(activeWorkoutDate).setHours(0,0,0,0);
+  return Math.max(0,Math.round((today-new Date(latest).setHours(0,0,0,0))/86400000));
+}
 function pairInfo(ex,ei){
   const key=ex.pair||'';
   const color=PAIR_COLORS[key]||'var(--border2)';
@@ -4371,6 +4438,12 @@ function renderExerciseCard(ex,ei){
   const tightTop=prevEx&&prevEx.pair&&prevEx.pair===ex.pair;
   const marginTop=tightTop?'3px':'10px';
   const expanded=ei===expandedExIdx;
+  // Recency nudge — if this exercise was trained within 3 days, muscles are
+  // still recovering. Show a subtle warning badge + fade the card a little.
+  const daysAgo=isMob?null:lastTrainedDaysAgo(ex.name);
+  const recent=daysAgo!=null&&daysAgo<3;
+  const recentBadge=recent?`<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:99px;background:rgba(229,62,84,.12);color:var(--red);font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase">${daysAgo===0?'Done today':daysAgo+'d ago · rest'}</span>`:'';
+  const recentFade=recent?';opacity:.72':'';
 
   // COMPACT row (default) — spreadsheet-style. Tap anywhere to expand.
   if(!expanded){
@@ -4397,11 +4470,11 @@ function renderExerciseCard(ex,ei){
       return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;background:${filled?'var(--s1)':'transparent'};border:1px solid ${filled?pair.color||badgeColor:'var(--border)'};border-radius:5px;font-size:10px;color:${skip?'var(--muted2)':filled?'var(--text)':'var(--muted2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
     }).join('');
     return `
-    <div class="w-ex-row" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:pointer">
+    <div class="w-ex-row" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:pointer${recentFade}">
       <div style="display:flex;gap:8px;align-items:center">
         ${pairTag}
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.name}</div>
+          <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.name}${recentBadge}</div>
           <div style="font-size:9px;margin-top:1px;color:var(--muted);letter-spacing:.02em">
             <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
             · ${ex.reps} · ${rest}
@@ -4480,12 +4553,12 @@ function renderExerciseCard(ex,ei){
   const clearPairBtn=`<button class="w-ex-pair" data-ei="${ei}" data-pair="" style="flex:0 0 auto;background:var(--s1);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">no pair</button>`;
   const muscleLine=ex.muscle?`<div style="font-size:10px;color:var(--muted);margin-top:3px"><span style="color:var(--text-soft);font-weight:600">Works:</span> ${ex.muscle} <button class="w-ex-info" data-ei="${ei}" title="More info / suggest replacement" style="margin-left:4px;background:none;border:1px solid var(--border);color:var(--plum);border-radius:5px;padding:1px 6px;font-size:10px;cursor:pointer">ℹ</button></div>`:'';
   return `
-  <div style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-pop)">
+  <div style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-pop)${recentFade}">
     <div class="w-ex-row" data-ei="${ei}" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;cursor:pointer">
       <div style="display:flex;gap:10px;flex:1;min-width:0">
         ${pairTag}
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.005em;line-height:1.2">${ex.name}</div>
+          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.005em;line-height:1.2">${ex.name}${recentBadge}</div>
           <div style="font-size:10px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">
             <span style="color:${badgeColor};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${badgeLabel}</span>
             <span style="color:var(--muted)">${ex.reps} · ${rest}</span>
@@ -4528,7 +4601,7 @@ function bindWorkoutInlineInputs(){
     const ei=+ev.currentTarget.dataset.ei,si=+ev.currentTarget.dataset.si;
     const s=activeWorkoutSession.exercises[ei].sets[si];
     s.completed=!s.completed;s.skipped=false;
-    S('fl_wkt_sessions',workoutSessions);
+    commitActiveSession();
     renderWorkoutBody();
   }));
   el.querySelectorAll('.w-set-w').forEach(i=>i.addEventListener('change',ev=>updateSet(+ev.target.dataset.ei,+ev.target.dataset.si,'weight',+ev.target.value||0)));
@@ -4554,7 +4627,7 @@ function moveExercise(ei,dir){
   [arr[ei],arr[j]]=[arr[j],arr[ei]];
   if(expandedExIdx===ei)expandedExIdx=j;
   else if(expandedExIdx===j)expandedExIdx=ei;
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4562,7 +4635,7 @@ function setExercisePair(ei,pair){
   if(!activeWorkoutSession)return;
   const ex=activeWorkoutSession.exercises[ei];if(!ex)return;
   ex.pair=pair||'';
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4590,7 +4663,7 @@ function copySetFromAbove(ei,si){
   const ex=activeWorkoutSession.exercises[ei];if(!ex)return;
   const above=ex.sets[si-1];if(!above)return;
   ex.sets[si]={weight:above.weight,reps:above.reps,skipped:false};
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4599,7 +4672,7 @@ function adjustWeight(ei,si,delta){
   const s=activeWorkoutSession.exercises[ei].sets[si];
   s.weight=Math.max(0,Math.round(((+s.weight||0)+delta)*10)/10);
   s.skipped=false;
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4608,7 +4681,7 @@ function adjustReps(ei,si,delta){
   const s=activeWorkoutSession.exercises[ei].sets[si];
   s.reps=Math.max(0,(+s.reps||0)+delta);
   s.skipped=false;
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4618,7 +4691,7 @@ function updateSet(ei,si,field,val){
   const set=ex.sets[si];if(!set)return;
   set[field]=val;
   if(val>0)set.skipped=false;
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
 }
 
 function toggleSetSkipped(ei,si){
@@ -4626,14 +4699,14 @@ function toggleSetSkipped(ei,si){
   const set=activeWorkoutSession.exercises[ei].sets[si];
   set.skipped=!set.skipped;
   if(set.skipped){set.weight=0;set.reps=0;}
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
 function addSetToExercise(ei){
   if(!activeWorkoutSession)return;
   activeWorkoutSession.exercises[ei].sets.push({weight:0,reps:0,skipped:false});
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4642,7 +4715,7 @@ function removeExerciseFromSession(ei){
   const ex=activeWorkoutSession.exercises[ei];
   if(!confirm(`Remove "${ex.name}" from today's workout?`))return;
   activeWorkoutSession.exercises.splice(ei,1);
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   renderWorkoutBody();
 }
 
@@ -4693,7 +4766,7 @@ function insertExerciseIntoSession(ex){
     activeWorkoutSession.exercises.push(newEx);
   }
   wkoutEditExerciseIdx=-1;
-  S('fl_wkt_sessions',workoutSessions);
+  commitActiveSession();
   closeOverlay('overlay-ex-pick');
   renderWorkoutBody();
 }
@@ -4734,7 +4807,7 @@ function openSaveTemplate(){
     activeWorkoutSession.dayId=tpl.id;
     activeWorkoutSession.dayName=tpl.name;
     activeWorkoutDayId=tpl.id;
-    S('fl_wkt_sessions',workoutSessions);
+    commitActiveSession();
     closeOverlay('overlay-save-template');
     renderWorkoutScreen();
     toast('Template saved ✓');
