@@ -4273,9 +4273,14 @@ function shiftWorkoutDate(delta){
 function renderWorkoutDayChips(){
   const el=document.getElementById('w-day-chips');
   if(!el)return;
-  // Highlight day of any existing session for activeDate
+  // Auto-restore today's session if there is one — so coming back to the
+  // Workout tab picks up where the user left off instead of showing
+  // "No session".
   const existingToday=workoutSessions.find(s=>s.date===activeWorkoutDate);
   if(existingToday&&!activeWorkoutDayId)activeWorkoutDayId=existingToday.dayId;
+  if(activeWorkoutDayId&&!activeWorkoutSession){
+    activeWorkoutSession=workoutSessions.find(s=>s.date===activeWorkoutDate&&s.dayId===activeWorkoutDayId)||null;
+  }
   el.innerHTML=workoutRoutines.map(r=>{
     const active=r.id===activeWorkoutDayId;
     const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
