@@ -619,9 +619,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
         <button id="w-next-day" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">›</button>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:6px;flex-wrap:wrap">
       <div class="page-sub" id="w-date-sub" style="margin:0"></div>
-      <button id="w-progress-btn" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📈 Progress</button>
+      <div style="display:flex;gap:6px">
+        <button id="w-history-btn" style="background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📜 History</button>
+        <button id="w-progress-btn" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📈 Progress</button>
+      </div>
     </div>
   </div>
 
@@ -670,6 +673,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <input class="field-input" type="text" id="template-name" placeholder="e.g. Push & Pull Combo">
     <button class="btn-full" id="btn-save-template" style="background:var(--g-teal);color:#fff">Save template</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-save-template')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: WORKOUT HISTORY — list past sessions, edit/delete -->
+<div class="overlay" id="overlay-history" onclick="closeOverlay('overlay-history')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;margin:0 auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📜 Workout History</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4">Tap <b>✎</b> to jump to that session for editing. Tap <b>✕</b> to delete it permanently.</div>
+    <div id="history-list" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-history')" style="margin-top:10px">Done</button>
   </div>
 </div>
 
@@ -4125,13 +4139,17 @@ function sessionHasData(s){
   if(!s||!Array.isArray(s.exercises))return false;
   return s.exercises.some(e=>(e.sets||[]).some(set=>set.skipped||set.completed||+set.weight||+set.reps));
 }
-// Commit the active session to workoutSessions + localStorage. Call this
-// after any real data change. If it's still a draft (not yet in the array),
-// push it now. Callers don't need to check — safe to call any time.
+// Commit the active session to workoutSessions + localStorage.
+// Drafts stay in memory ONLY — we persist the first time the user actually
+// logs real work (weight/reps/skipped/completed). This prevents chip-tap
+// previews + cosmetic tweaks (pair colour, reorder) from creating phantom
+// history entries the user never meant to save.
 function commitActiveSession(){
   if(!activeWorkoutSession)return;
-  const idx=workoutSessions.indexOf(activeWorkoutSession);
-  if(idx<0)workoutSessions.push(activeWorkoutSession);
+  if(!workoutSessions.includes(activeWorkoutSession)){
+    if(!sessionHasData(activeWorkoutSession))return;
+    workoutSessions.push(activeWorkoutSession);
+  }
   S('fl_wkt_sessions',workoutSessions);
 }
 // Discard the active session IF it's still a draft (never committed, no data).
@@ -4149,23 +4167,19 @@ function ensureActiveSession(){
   if(!routine)return null;
   let s=workoutSessions.find(x=>x.date===activeWorkoutDate&&x.dayId===activeWorkoutDayId);
   if(s){activeWorkoutSession=s;return s;}
-  // Build a fresh draft session from the routine template, pre-filling last-
-  // week values. Only committed to workoutSessions once the user actually
-  // logs something — avoids creating phantom empty sessions from chip-tapping.
-  const last=lastSessionFor(activeWorkoutDayId);
+  // Build a fresh draft from the routine template. Do NOT pre-fill weights/
+  // reps from last session — those get shown as ghost placeholders in the
+  // input UI, so the user sees the target without us silently saving it.
   const exercises=routine.exercises.map(ex=>{
-    const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
     const n=Math.max(1,+ex.sets||5);
     const sets=[];
-    for(let i=0;i<n;i++){
-      const pre=lastEx&&lastEx.sets&&lastEx.sets[i];
-      sets.push({weight:pre&&!pre.skipped?+pre.weight||0:0,reps:pre&&!pre.skipped?+pre.reps||0:0,skipped:false});
-    }
+    for(let i=0;i<n;i++)sets.push({weight:0,reps:0,skipped:false});
     return{name:ex.name,type:ex.type,reps:ex.reps,rest:ex.rest,unit:ex.unit||'lbs',pair:ex.pair||'',muscle:ex.muscle||'',sets};
   });
   s={id:Date.now(),date:activeWorkoutDate,dayId:activeWorkoutDayId,dayName:routine.name,exercises,notes:''};
   activeWorkoutSession=s;
-  // NOT pushed to workoutSessions yet — still a draft.
+  // NOT pushed to workoutSessions yet — still a draft. commitActiveSession
+  // will refuse to persist until the user logs at least one real set.
   return s;
 }
 
@@ -4181,12 +4195,76 @@ function renderWorkoutScreen(){
   const next=document.getElementById('w-next-day');
   const today=document.getElementById('w-today-btn');
   const prog=document.getElementById('w-progress-btn');
+  const hist=document.getElementById('w-history-btn');
   if(prev&&!prev._bound){prev._bound=true;prev.addEventListener('click',()=>shiftWorkoutDate(-1));}
   if(next&&!next._bound){next._bound=true;next.addEventListener('click',()=>shiftWorkoutDate(1));}
   if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{discardDraftSessionIfEmpty();activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;renderWorkoutScreen();});}
   if(prog&&!prog._bound){prog._bound=true;prog.addEventListener('click',openProgressView);}
+  if(hist&&!hist._bound){hist._bound=true;hist.addEventListener('click',openHistoryView);}
   renderWorkoutDayChips();
   renderWorkoutBody();
+}
+
+// ══ WORKOUT HISTORY VIEW ══
+function openHistoryView(){
+  openOverlay('overlay-history');
+  renderHistoryList();
+}
+
+function renderHistoryList(){
+  const el=document.getElementById('history-list');
+  if(!el)return;
+  const list=[...workoutSessions].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!list.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:24px 8px;line-height:1.5">No logged sessions yet.<br>Log a workout and it\'ll appear here.</div>';
+    return;
+  }
+  el.innerHTML=list.map(s=>{
+    const exs=s.exercises||[];
+    const done=exs.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed||+x.weight||+x.reps).length,0);
+    const total=exs.reduce((a,e)=>a+(e.sets||[]).length,0);
+    const volume=exs.reduce((a,e)=>a+(e.sets||[]).reduce((b,x)=>b+(+x.weight||0)*(+x.reps||0),0),0);
+    const d=new Date(s.date);
+    const dateLine=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const volLine=volume?' · '+Math.round(volume).toLocaleString()+' lb·reps':'';
+    const active=s===activeWorkoutSession;
+    return `
+    <div style="display:flex;align-items:stretch;gap:6px;background:var(--s2);border:1px solid ${active?'var(--teal-bright)':'var(--border)'};border-radius:12px;padding:10px 12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.dayName||'Workout'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${dateLine} · ${done}/${total} sets${volLine}</div>
+      </div>
+      <button class="w-hist-edit" data-sid="${s.id}" title="Edit this session" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--border);color:var(--plum);border-radius:8px;padding:0;font-size:15px;cursor:pointer">✎</button>
+      <button class="w-hist-del" data-sid="${s.id}" title="Delete this session" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:0;font-size:14px;cursor:pointer">✕</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.w-hist-edit').forEach(b=>b.addEventListener('click',()=>jumpToHistorySession(+b.dataset.sid)));
+  el.querySelectorAll('.w-hist-del').forEach(b=>b.addEventListener('click',()=>deleteHistorySession(+b.dataset.sid)));
+}
+
+function jumpToHistorySession(sid){
+  const s=workoutSessions.find(x=>x.id===sid);
+  if(!s)return;
+  discardDraftSessionIfEmpty();
+  activeWorkoutDate=s.date;
+  activeWorkoutDayId=s.dayId;
+  activeWorkoutSession=s;
+  expandedExIdx=-1;
+  closeOverlay('overlay-history');
+  renderWorkoutScreen();
+}
+
+function deleteHistorySession(sid){
+  const s=workoutSessions.find(x=>x.id===sid);
+  if(!s)return;
+  const d=new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(!confirm(`Delete "${s.dayName||'Workout'}" from ${d}? This can't be undone.`))return;
+  workoutSessions=workoutSessions.filter(x=>x.id!==sid);
+  S('fl_wkt_sessions',workoutSessions);
+  if(activeWorkoutSession===s){activeWorkoutSession=null;activeWorkoutDayId=null;}
+  renderHistoryList();
+  renderWorkoutScreen();
+  toast('Deleted');
 }
 
 // ══ WORKOUT PROGRESS VIEW ══
@@ -4360,11 +4438,14 @@ function renderWorkoutBody(){
   if(!s){el.innerHTML='<div class="empty-state">No session.</div>';return;}
 
   const isBlank=s.dayId==='blank'||s.dayId.startsWith('tpl_');
+  const isDraft=!workoutSessions.includes(s);
+  const draftHint=isDraft?`<div style="font-size:10px;color:var(--plum);margin-top:6px;font-weight:600;letter-spacing:.02em">👁 Preview — nothing is saved until you log a set. Switch Days freely.</div>`:'';
   const exerciseHTML=s.exercises.map((ex,ei)=>renderExerciseCard(ex,ei)).join('');
   el.innerHTML=`
     <div style="margin-top:6px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-soft)">
       <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em">${s.dayName}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">${s.exercises.length} exercise${s.exercises.length===1?'':'s'} · ${s.exercises.reduce((a,e)=>a+(e.sets||[]).length,0)} total sets planned</div>
+      ${draftHint}
     </div>
     ${exerciseHTML||'<div class="empty-state" style="padding-top:30px"><div class="es-icon">🤸</div><div class="es-txt">No exercises yet — tap "+ Add exercise" below.</div></div>'}
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -4438,6 +4519,10 @@ function renderExerciseCard(ex,ei){
   const tightTop=prevEx&&prevEx.pair&&prevEx.pair===ex.pair;
   const marginTop=tightTop?'3px':'10px';
   const expanded=ei===expandedExIdx;
+  // Last session for this routine + matching exercise — used for ghost hints
+  // so the user sees last time's numbers without us silently saving them.
+  const lastS=lastSessionFor(activeWorkoutDayId);
+  const lastEx=lastS&&lastS.exercises.find(e=>e.name===ex.name);
   // Recency nudge — if this exercise was trained within 3 days, muscles are
   // still recovering. Show a subtle warning badge + fade the card a little.
   const daysAgo=isMob?null:lastTrainedDaysAgo(ex.name);
@@ -4453,6 +4538,7 @@ function renderExerciseCard(ex,ei){
       const completed=!!set.completed;
       const filled=!skip&&(completed||w||r);
       let text='·';
+      let isHint=false;
       if(skip)text='—';
       else if(filled){
         if(isMob){
@@ -4466,8 +4552,27 @@ function renderExerciseCard(ex,ei){
         }else{
           text=`${w||0}×${r||0}`;
         }
+      }else if(lastEx&&lastEx.sets&&lastEx.sets[si]){
+        // Ghost hint — show last time's values in muted text so user has a
+        // target. Not saved anywhere; just a visual reference.
+        const lw=+lastEx.sets[si].weight||0,lr=+lastEx.sets[si].reps||0;
+        const lc=!!lastEx.sets[si].completed,ls=!!lastEx.sets[si].skipped;
+        if(!ls&&(lw||lr||lc)){
+          if(isMob&&lc)text='·';
+          else if(isTimed){
+            if(lw&&lr)text=`${lw}×${lr}s`;
+            else if(lr)text=`${lr}s`;
+            else if(lw)text=`${lw}`;
+          }else if(!isMob){
+            text=`${lw||0}×${lr||0}`;
+          }
+          if(text!=='·')isHint=true;
+        }
       }
-      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;background:${filled?'var(--s1)':'transparent'};border:1px solid ${filled?pair.color||badgeColor:'var(--border)'};border-radius:5px;font-size:10px;color:${skip?'var(--muted2)':filled?'var(--text)':'var(--muted2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
+      const cellColor=skip?'var(--muted2)':filled?'var(--text)':isHint?'var(--muted2)':'var(--muted2)';
+      const cellBorder=filled?(pair.color||badgeColor):isHint?'var(--border)':'var(--border)';
+      const cellStyle=isHint?'background:transparent;opacity:.55;font-style:italic':(filled?'background:var(--s1)':'background:transparent');
+      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;${cellStyle};border:1px solid ${cellBorder};border-radius:5px;font-size:10px;color:${cellColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
     }).join('');
     return `
     <div class="w-ex-row" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:pointer${recentFade}">
@@ -4501,11 +4606,17 @@ function renderExerciseCard(ex,ei){
     }
     const weight=set.weight||'';
     const reps=set.reps||'';
-    const wPlaceholder='lb';
+    // Placeholders show last session's numbers as a target — they're ghosted
+    // by the browser when the input is empty, and disappear once the user
+    // types. Nothing gets saved unless they actually enter a value.
+    const lastSet=lastEx&&lastEx.sets&&lastEx.sets[si];
+    const lastW=lastSet&&!lastSet.skipped?+lastSet.weight||0:0;
+    const lastR=lastSet&&!lastSet.skipped?+lastSet.reps||0:0;
+    const wPlaceholder=lastW?String(lastW):'lb';
     const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${wPlaceholder}" inputmode="decimal" step="0.5" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
     const wPlusBtn=`<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
     // Reps column: "sec" on timed holds, "reps" otherwise.
-    const repsPlaceholder=isTimed?'sec':'reps';
+    const repsPlaceholder=lastR?String(lastR)+(isTimed?'s':''):(isTimed?'sec':'reps');
     const rPlusBtn=isTimed
       ? `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
       : `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="1" title="Add 1 rep" style="flex:0 0 30px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+1</button>`;
@@ -4522,11 +4633,9 @@ function renderExerciseCard(ex,ei){
       <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 28px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
     </div>`;
   }).join('');
-  const last=lastSessionFor(activeWorkoutDayId);
-  const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
   let lastSummary='';
   if(lastEx){
-    const dateStr=new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dateStr=new Date(lastS.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
     if(isMob){
       const doneCount=lastEx.sets.filter(s=>!s.skipped&&(s.completed||s.weight||s.reps)).length;
       if(doneCount)lastSummary=`Last ${dateStr}: ${doneCount} set${doneCount===1?'':'s'} done ✓`;
