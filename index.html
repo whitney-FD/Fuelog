@@ -687,6 +687,21 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
+<!-- MODAL: MOVE SESSION — change a saved session's date or Day routine -->
+<div class="overlay" id="overlay-move-session" onclick="closeOverlay('overlay-move-session')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Move workout</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.4">Logged on the wrong date or under the wrong Day? Change either (or both) and hit Save. Your sets stay exactly as they were.</div>
+    <div class="field-lbl">Date</div>
+    <input class="field-input" type="date" id="move-session-date">
+    <div class="field-lbl">Day (routine label)</div>
+    <select class="field-input" id="move-session-day"></select>
+    <button class="btn-full" id="btn-move-session" style="background:var(--g-teal);color:#fff">Save</button>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-move-session')">Cancel</button>
+  </div>
+</div>
+
 <!-- MODAL: WORKOUT PROGRESS GRAPHS -->
 <div class="overlay" id="overlay-progress" onclick="closeOverlay('overlay-progress')">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;margin:0 auto">
@@ -1511,7 +1526,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v74 · 2026-04-24';
+const APP_VERSION='v75 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -4296,6 +4311,49 @@ function jumpToHistorySession(sid){
   renderWorkoutScreen();
 }
 
+// Move a saved session to a different date and/or Day routine. Keeps all
+// the sets/exercises intact — only the date + dayId + dayName change.
+function openMoveSession(){
+  const s=activeWorkoutSession;
+  if(!s||!workoutSessions.includes(s)){toast('Save the session first by logging a set.');return;}
+  // Date input needs YYYY-MM-DD; session stores toDateString() (e.g.
+  // "Mon Apr 20 2026"). Convert both ways.
+  const d=new Date(s.date);
+  const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('move-session-date').value=iso;
+  const sel=document.getElementById('move-session-day');
+  sel.innerHTML=workoutRoutines.map(r=>`<option value="${r.id}" ${r.id===s.dayId?'selected':''}>${r.name}</option>`).join('');
+  const btn=document.getElementById('btn-move-session');
+  btn.onclick=()=>saveMoveSession(s);
+  openOverlay('overlay-move-session');
+}
+
+function saveMoveSession(s){
+  const iso=document.getElementById('move-session-date').value;
+  const dayId=document.getElementById('move-session-day').value;
+  if(!iso){toast('Pick a date');return;}
+  // Parse YYYY-MM-DD as local midnight, then format as toDateString() to
+  // match every other session in storage.
+  const [y,m,d]=iso.split('-').map(Number);
+  const newDate=new Date(y,m-1,d).toDateString();
+  // If a different session already exists on that date+dayId, bail rather
+  // than silently overwriting the user's other log.
+  const clash=workoutSessions.find(x=>x!==s&&x.date===newDate&&x.dayId===dayId);
+  if(clash){
+    if(!confirm(`There's already a "${clash.dayName}" session on that date. Move anyway? (You'll have two sessions on the same date.)`))return;
+  }
+  const routine=workoutRoutines.find(r=>r.id===dayId);
+  s.date=newDate;
+  s.dayId=dayId;
+  s.dayName=routine?routine.name:s.dayName;
+  S('fl_wkt_sessions',workoutSessions);
+  activeWorkoutDate=newDate;
+  activeWorkoutDayId=dayId;
+  closeOverlay('overlay-move-session');
+  toast('Moved ✓');
+  renderWorkoutScreen();
+}
+
 function deleteActiveSession(){
   const s=activeWorkoutSession;
   if(!s||!workoutSessions.includes(s)){toast('Nothing to delete — this is a preview.');return;}
@@ -4516,6 +4574,7 @@ function renderWorkoutBody(){
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise${isPastDate?'':' to today'}</button>
       ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}
+      ${!isDraft?`<button class="btn-full secondary" data-wbtn="move-session" style="flex:1 1 100%">📅 Move to different date / Day</button>`:''}
       ${!isDraft?`<button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>`:''}
       <button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>
     </div>
@@ -4527,6 +4586,7 @@ function renderWorkoutBody(){
       if(kind==='add-ex')openExercisePicker();
       else if(kind==='save-tpl')openSaveTemplate();
       else if(kind==='finish')finishWorkout();
+      else if(kind==='move-session')openMoveSession();
       else if(kind==='delete-session')deleteActiveSession();
     });
   });
