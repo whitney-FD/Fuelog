@@ -1530,7 +1530,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v77 · 2026-04-24';
+const APP_VERSION='v78 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -4388,6 +4388,16 @@ function deleteHistorySession(sid){
 let progressMetric='weight'; // 'weight' | 'reps' | 'volume'
 let progressRangeDays=90;
 let progressSearch='';
+// Set of exercise names the user has starred. Persisted so "my main lifts"
+// (bench, squat, deadlift, etc.) float to the top of the Progress view.
+let favoriteExercises=new Set(J('fl_wkt_favorites',[]));
+function saveFavoriteExercises(){S('fl_wkt_favorites',[...favoriteExercises]);}
+function toggleFavoriteExercise(name){
+  if(favoriteExercises.has(name))favoriteExercises.delete(name);
+  else favoriteExercises.add(name);
+  saveFavoriteExercises();
+  renderProgressList();
+}
 
 function openProgressView(){
   openOverlay('overlay-progress');
@@ -4446,8 +4456,21 @@ function renderProgressList(){
   const el=document.getElementById('prog-list');
   const all=buildProgressSeries();
   const list=progressSearch?all.filter(x=>x.name.toLowerCase().includes(progressSearch)||(x.muscle||'').toLowerCase().includes(progressSearch)):all;
-  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:24px 0">No logged sessions in range. Log a few workouts first, then chart will populate.</div>';return;}
-  el.innerHTML=list.map(ex=>renderExerciseChart(ex)).join('');
+  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:24px 0">No logged sessions in range. Log a few workouts first, then chart will populate.</div>';el.onclick=null;return;}
+  const favs=list.filter(x=>favoriteExercises.has(x.name));
+  const rest=list.filter(x=>!favoriteExercises.has(x.name));
+  const sectionLbl=t=>`<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:6px 2px 8px">${t}</div>`;
+  let html='';
+  if(favs.length)html+=sectionLbl('⭐ My main lifts')+favs.map(ex=>renderExerciseChart(ex)).join('');
+  if(rest.length)html+=(favs.length?sectionLbl('Everything else'):'')+rest.map(ex=>renderExerciseChart(ex)).join('');
+  el.innerHTML=html;
+  // Delegate star taps so dynamically-rendered charts work without rebinding.
+  el.onclick=ev=>{
+    const btn=ev.target.closest('.w-prog-star');
+    if(!btn)return;
+    ev.stopPropagation();
+    toggleFavoriteExercise(btn.dataset.exName);
+  };
 }
 
 // Compact inline SVG line chart. Accessible-ish via title text, tap-friendly on mobile.
@@ -4476,9 +4499,14 @@ function renderExerciseChart(ex){
   const lastUnit=progressMetric==='weight'?' lb':progressMetric==='reps'?(isTimedEx?'s':' reps'):'';
   const lastLabel=`${last}${lastUnit}`;
   const muscleLine=ex.muscle?`<span style="color:var(--muted);font-size:10px">${ex.muscle}</span>`:'';
+  const fav=favoriteExercises.has(ex.name);
+  const cardBg=fav?'linear-gradient(135deg,rgba(255,200,87,.1),var(--s2))':'var(--s2)';
+  const cardBorder=fav?'1.5px solid var(--gold, #FFC857)':'1px solid var(--border)';
+  const starBtn=`<button class="w-prog-star" data-ex-name="${ex.name.replace(/"/g,'&quot;')}" title="${fav?'Unstar':'Star as main lift'}" style="background:none;border:none;color:${fav?'#FFC857':'var(--muted)'};font-size:18px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0">${fav?'★':'☆'}</button>`;
   return `
-  <div style="margin-bottom:12px;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-soft)">
+  <div style="margin-bottom:12px;padding:12px;background:${cardBg};border:${cardBorder};border-radius:14px;box-shadow:var(--shadow-soft)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+      ${starBtn}
       <div style="min-width:0;flex:1">
         <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.name}</div>
         <div style="display:flex;gap:8px;font-size:10px;color:var(--muted);margin-top:2px">${metricLabel} · ${pts.length} session${pts.length===1?'':'s'}${muscleLine?' · ':''}${muscleLine}</div>
