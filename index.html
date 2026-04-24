@@ -998,7 +998,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="macro-field"><label>Carbs g</label><input type="number" id="tw-carbs"></div>
       <div class="macro-field"><label>Fat g</label><input type="number" id="tw-fat"></div>
       <div class="macro-field"><label>Fiber g</label><input type="number" id="tw-fiber"></div>
+      <div class="macro-field"><label>Sugar g</label><input type="number" id="tw-sugar" step="any"></div>
+      <div class="macro-field"><label>Sodium mg</label><input type="number" id="tw-sodium" step="any"></div>
       <div class="macro-field"><label>Vitamin A %</label><input type="number" id="tw-vita"></div>
+      <div class="macro-field"><label>Iron mg</label><input type="number" id="tw-iron" step="any"></div>
     </div>
     <button class="btn-full" onclick="saveTweakedRecipe()">Save as New Recipe</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-tweak')">Cancel</button>
@@ -2743,7 +2746,7 @@ function logRecipeServing(){
   const targetDate=new Date();targetDate.setDate(targetDate.getDate()+dayOffset);
   const targetKey=targetDate.toDateString();
   const mul=qty/r.servings;
-  const entry={id:Date.now(),name:r.name+(qty!==1?` (${qty} servings)`:''),cal:Math.round(r.cal*mul),prot:Math.round(r.prot*mul*10)/10,carbs:Math.round(r.carbs*mul*10)/10,fat:Math.round(r.fat*mul*10)/10,fiber:Math.round(r.fiber*mul*10)/10,vita:Math.round(r.vita*mul),serving:qty+' serving'+(qty!==1?'s':''),conf:'high',note:'',slot,src:'recipe',time:nowTime()};
+  const entry={id:Date.now(),name:r.name+(qty!==1?` (${qty} servings)`:''),cal:Math.round(r.cal*mul),prot:Math.round(r.prot*mul*10)/10,carbs:Math.round(r.carbs*mul*10)/10,fat:Math.round(r.fat*mul*10)/10,fiber:Math.round(r.fiber*mul*10)/10,vita:Math.round((r.vita||0)*mul),iron:Math.round((r.iron||0)*mul*10)/10,sodium:Math.round((r.sodium||0)*mul),sugar:Math.round((r.sugar||0)*mul*10)/10,serving:qty+' serving'+(qty!==1?'s':''),conf:'high',note:'',slot,src:'recipe',time:nowTime()};
   addToLibrary(entry);
   // Save to target day
   const targetEntries=J('fl_e_'+targetKey,[]);
@@ -2775,9 +2778,9 @@ async function aiTweakRecipe(){
   if(!goals.apiKey||!goals.apiKey.startsWith('sk-ant')){toast('Add API key in Goals tab');return}
   const srvs=+document.getElementById('tw-servings').value||base.servings;toast('Recalculating...');
   try{
-    const r=await callClaude(`Return updated total batch macros as JSON only: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n}`,`Original (${base.servings} srv): cal=${base.cal},prot=${base.prot}g,carbs=${base.carbs}g,fat=${base.fat}g,fiber=${base.fiber}g. Notes: ${base.notes||'none'}. Changes: ${changes}. New servings: ${srvs}.`);
+    const r=await callClaude(`Return updated total batch macros as JSON only: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n,"iron":n,"sodium":n,"sugar":n}. vita=Vitamin A %DV; iron and sodium in mg; sugar in g.`,`Original (${base.servings} srv): cal=${base.cal},prot=${base.prot}g,carbs=${base.carbs}g,fat=${base.fat}g,fiber=${base.fiber}g,vita=${base.vita||0}%,iron=${base.iron||0}mg,sodium=${base.sodium||0}mg,sugar=${base.sugar||0}g. Notes: ${base.notes||'none'}. Changes: ${changes}. New servings: ${srvs}.`);
     const m=JSON.parse(r.replace(/```json|```/g,'').trim());
-    ['cal','prot','carbs','fat','fiber','vita'].forEach(k=>{document.getElementById('tw-'+k).value=m[k]||0});
+    ['cal','prot','carbs','fat','fiber','vita','iron','sodium','sugar'].forEach(k=>{const el=document.getElementById('tw-'+k);if(el)el.value=m[k]||0;});
     document.getElementById('tw-macros-grid').style.display='grid';toast('Done!');
   }catch{toast('Could not recalculate')}
 }
@@ -2786,7 +2789,7 @@ function saveTweakedRecipe(){
   const name=document.getElementById('tw-name').value.trim();const srvs=+document.getElementById('tw-servings').value;
   if(!name||!srvs){toast('Name and servings required');return}
   const base=recipes.find(x=>x.id===tweakBaseId);
-  recipes.push({id:Date.now(),name,servings:srvs,notes:`Tweaked from "${base?.name}": ${document.getElementById('tw-changes').value}`,cal:+document.getElementById('tw-cal').value||base?.cal||0,prot:+document.getElementById('tw-prot').value||base?.prot||0,carbs:+document.getElementById('tw-carbs').value||base?.carbs||0,fat:+document.getElementById('tw-fat').value||base?.fat||0,fiber:+document.getElementById('tw-fiber').value||base?.fiber||0,vita:+document.getElementById('tw-vita').value||base?.vita||0,course:base?.course||'none',cats:base?.cats||[],photo:base?.photo||null,favorite:false,baseId:tweakBaseId,created:Date.now()});
+  recipes.push({id:Date.now(),name,servings:srvs,notes:`Tweaked from "${base?.name}": ${document.getElementById('tw-changes').value}`,cal:+document.getElementById('tw-cal').value||base?.cal||0,prot:+document.getElementById('tw-prot').value||base?.prot||0,carbs:+document.getElementById('tw-carbs').value||base?.carbs||0,fat:+document.getElementById('tw-fat').value||base?.fat||0,fiber:+document.getElementById('tw-fiber').value||base?.fiber||0,vita:+document.getElementById('tw-vita').value||base?.vita||0,iron:+document.getElementById('tw-iron').value||base?.iron||0,sodium:+document.getElementById('tw-sodium').value||base?.sodium||0,sugar:+document.getElementById('tw-sugar').value||base?.sugar||0,course:base?.course||'none',cats:base?.cats||[],photo:base?.photo||null,favorite:false,baseId:tweakBaseId,created:Date.now()});
   S('fl_recipes',recipes);closeOverlay('overlay-tweak');renderRecipes();toast('Tweaked recipe saved!');
 }
 
