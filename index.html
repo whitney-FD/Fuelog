@@ -835,7 +835,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="macro-field"><label>Carbs g</label><input type="number" id="edit-carbs"></div>
       <div class="macro-field"><label>Fat g</label><input type="number" id="edit-fat"></div>
       <div class="macro-field"><label>Fiber g</label><input type="number" id="edit-fiber"></div>
+      <div class="macro-field"><label>Sugar g</label><input type="number" id="edit-sugar" step="any"></div>
+      <div class="macro-field"><label>Sodium mg</label><input type="number" id="edit-sodium" step="any"></div>
       <div class="macro-field"><label>Vitamin A %</label><input type="number" id="edit-vita"></div>
+      <div class="macro-field"><label>Iron mg</label><input type="number" id="edit-iron" step="any"></div>
     </div>
     <button class="btn-full" onclick="saveEditEntry()">Save Changes</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-edit')">Cancel</button>
@@ -1622,7 +1625,7 @@ function totals(arr){
 function addToLibrary(entry){
   const existing=foodLibrary.find(f=>f.name.toLowerCase()===entry.name.toLowerCase());
   if(existing){existing.count=(existing.count||1)+1;existing.lastUsed=Date.now();}
-  else{foodLibrary.push({name:entry.name,cal:entry.cal,prot:entry.prot,carbs:entry.carbs,fat:entry.fat,fiber:entry.fiber,vita:entry.vita,serving:entry.serving||'',count:1,lastUsed:Date.now()});}
+  else{foodLibrary.push({name:entry.name,cal:entry.cal,prot:entry.prot,carbs:entry.carbs,fat:entry.fat,fiber:entry.fiber,vita:entry.vita,iron:entry.iron||0,sodium:entry.sodium||0,sugar:entry.sugar||0,serving:entry.serving||'',count:1,lastUsed:Date.now()});}
   S('fl_foods',foodLibrary);
 }
 
@@ -1789,7 +1792,12 @@ function doSearch(q){
           const n=p.nutriments||{};
           const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
           const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
-          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,src:'off'};
+          // OFF stores iron_100g in grams — convert to mg (× 1000) and scale
+          // by the per-serving ratio. sodium_100g is in grams too; sugars_100g in grams.
+          const ironMg=Math.round((n.iron_100g||0)*ratio*1000*10)/10;
+          const sodMg=Math.round((n.sodium_100g||0)*ratio*1000);
+          const sugarG=Math.round((n.sugars_100g||0)*ratio*10)/10;
+          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),iron:ironMg,sodium:sodMg,sugar:sugarG,serving:servingLabel,src:'off'};
         });
       }
       renderSearchResults(q,matchedRecipes,mine,offResults,'done');
@@ -1804,7 +1812,7 @@ function doSearch(q){
 function logFromLibrary(f){
   closeSearchResults();
   document.getElementById('food-ta').value='';
-  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs||0,fat:f.fat||0,fiber:f.fiber||0,vita:f.vita||0,serving:f.serving||'',conf:'high',note:'',slot:currentSlot(),src:'library',time:nowTime()});
+  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs||0,fat:f.fat||0,fiber:f.fiber||0,vita:f.vita||0,iron:f.iron||0,sodium:f.sodium||0,sugar:f.sugar||0,serving:f.serving||'',conf:'high',note:'',slot:currentSlot(),src:'library',time:nowTime()});
   addToLibrary(f);
   refreshCoach();
 }
@@ -1812,7 +1820,7 @@ function logFromLibrary(f){
 function logFromOFF(f){
   closeSearchResults();
   document.getElementById('food-ta').value='';
-  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs,fat:f.fat,fiber:f.fiber,vita:f.vita,serving:f.serving,conf:'high',note:'',slot:currentSlot(),src:'off',time:nowTime()});
+  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs,fat:f.fat,fiber:f.fiber,vita:f.vita,iron:f.iron||0,sodium:f.sodium||0,sugar:f.sugar||0,serving:f.serving,conf:'high',note:'',slot:currentSlot(),src:'off',time:nowTime()});
   addToLibrary(f);
   refreshCoach();
   toast('Logged: '+f.name);
@@ -1837,8 +1845,8 @@ async function logFoodAI(text){
     const r=await callClaude(
       `You are a nutrition database. The user may describe one OR multiple foods separated by commas or "and".
 Return ONLY a valid JSON array — one object per distinct food item. Never lump multiple foods into one entry. Recipes or named dishes count as one item.
-Each object: {"name":"display name","cal":number,"prot":number,"carbs":number,"fat":number,"fiber":number,"vita":number,"serving":"portion description","conf":"high|medium|low","note":"accuracy note if not high"}
-Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate. No markdown, no explanation, just the JSON array.`,
+Each object: {"name":"display name","cal":number,"prot":number,"carbs":number,"fat":number,"fiber":number,"vita":number,"iron":number,"sodium":number,"sugar":number,"serving":"portion description","conf":"high|medium|low","note":"accuracy note if not high"}
+Use USDA FoodData Central values. vita=Vitamin A % DV; iron in mg; sodium in mg; sugar in g. Be realistic and accurate. No markdown, no explanation, just the JSON array.`,
       q
     );
     // Robust JSON extraction: Claude sometimes wraps its answer in prose,
@@ -1864,7 +1872,7 @@ Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate
     const slot=currentSlot();
     const t=nowTime();
     foods.forEach((food,i)=>{
-      const entry={id:Date.now()+i,name:food.name,cal:food.cal||0,prot:food.prot||0,carbs:food.carbs||0,fat:food.fat||0,fiber:food.fiber||0,vita:food.vita||0,serving:food.serving||'',conf:food.conf||'high',note:food.note||'',slot,src:'ai',time:t};
+      const entry={id:Date.now()+i,name:food.name,cal:food.cal||0,prot:food.prot||0,carbs:food.carbs||0,fat:food.fat||0,fiber:food.fiber||0,vita:food.vita||0,iron:food.iron||0,sodium:food.sodium||0,sugar:food.sugar||0,serving:food.serving||'',conf:food.conf||'high',note:food.note||'',slot,src:'ai',time:t};
       addEntry(entry);
       addToLibrary(entry);
     });
@@ -1908,7 +1916,10 @@ function openEditEntry(id){
   document.getElementById('edit-carbs').value=e.carbs||0;
   document.getElementById('edit-fat').value=e.fat||0;
   document.getElementById('edit-fiber').value=e.fiber||0;
+  document.getElementById('edit-sugar').value=e.sugar||0;
+  document.getElementById('edit-sodium').value=e.sodium||0;
   document.getElementById('edit-vita').value=e.vita||0;
+  document.getElementById('edit-iron').value=e.iron||0;
   openOverlay('overlay-edit');
 }
 
@@ -1997,7 +2008,10 @@ async function lookupBarcode(code){
       const p=data.product;const n=p.nutriments||{};
       const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
       const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
-      const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
+      const ironMg=Math.round((n.iron_100g||0)*ratio*1000*10)/10;
+      const sodMg=Math.round((n.sodium_100g||0)*ratio*1000);
+      const sugarG=Math.round((n.sugars_100g||0)*ratio*10)/10;
+      const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),iron:ironMg,sodium:sodMg,sugar:sugarG,serving:servingLabel,conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
       addEntry(entry);addToLibrary(entry);refreshCoach();
       toast('✓ Logged: '+entry.name+' — '+entry.cal+' cal',4000);
       return;
@@ -3416,7 +3430,10 @@ function saveEditEntry(){
     e.carbs=Math.round(+document.getElementById('edit-carbs').value*qty*10)/10;
     e.fat=Math.round(+document.getElementById('edit-fat').value*qty*10)/10;
     e.fiber=Math.round(+document.getElementById('edit-fiber').value*qty*10)/10;
+    e.sugar=Math.round(+document.getElementById('edit-sugar').value*qty*10)/10;
+    e.sodium=Math.round(+document.getElementById('edit-sodium').value*qty);
     e.vita=Math.round(+document.getElementById('edit-vita').value*qty);
+    e.iron=Math.round(+document.getElementById('edit-iron').value*qty*10)/10;
     // Clear the AI low-confidence flag and warning note once the user has
     // reviewed/edited — they've taken ownership of the numbers.
     if(e.conf==='low')e.conf='medium';
