@@ -791,6 +791,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </label>
     <div class="goal-section-title">Danger Zone</div>
     <button class="btn-full secondary" onclick="clearToday()">Clear Today's Log</button>
+    <button class="btn-full secondary" onclick="forceRefresh()" style="margin-top:6px">🔄 Force refresh (pull latest update)</button>
+    <div id="app-version" style="text-align:center;font-size:10px;color:var(--muted);margin-top:12px;letter-spacing:.08em"></div>
   </div>
 </div>
 
@@ -1509,9 +1511,13 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
+const APP_VERSION='v74 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
+    // Check for updates every 30 min while the app is open, so users on
+    // long-running PWA sessions see new builds without a full app kill.
+    setInterval(()=>{try{reg.update();}catch{}},30*60*1000);
     reg.addEventListener('updatefound',()=>{
       const nw=reg.installing;
       nw.addEventListener('statechange',()=>{
@@ -1525,6 +1531,22 @@ if('serviceWorker' in navigator){
 function applyUpdate(){
   if(swReg&&swReg.waiting){swReg.waiting.postMessage('skipWaiting');}
   window.location.reload();
+}
+async function forceRefresh(){
+  // Unregister SW, drop caches, then hard-reload so the user sees the newest
+  // HTML + assets no matter what was cached.
+  toast('Fetching latest…',1500);
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if(self.caches){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch{}
+  setTimeout(()=>{window.location.reload();},400);
 }
 
 // ══ INIT ══
@@ -1567,7 +1589,7 @@ function gotoScreen(name,btn){
   if(name==='week')buildWeek();
   if(name==='recipes')renderRecipes();
   if(name==='workout')renderWorkoutScreen();
-  if(name==='goals'){renderSuppManager();renderNutrientToggles();}
+  if(name==='goals'){renderSuppManager();renderNutrientToggles();const ve=document.getElementById('app-version');if(ve)ve.textContent='Fuelog '+APP_VERSION;}
 }
 function openQuickNav(name){
   const idx={today:0,week:1,recipes:2,workout:3,goals:4};
@@ -4274,6 +4296,19 @@ function jumpToHistorySession(sid){
   renderWorkoutScreen();
 }
 
+function deleteActiveSession(){
+  const s=activeWorkoutSession;
+  if(!s||!workoutSessions.includes(s)){toast('Nothing to delete — this is a preview.');return;}
+  const d=new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(!confirm(`Delete "${s.dayName||'Workout'}" from ${d}? This can't be undone.`))return;
+  workoutSessions=workoutSessions.filter(x=>x!==s);
+  S('fl_wkt_sessions',workoutSessions);
+  activeWorkoutSession=null;
+  activeWorkoutDayId=null;
+  toast('Session deleted');
+  renderWorkoutScreen();
+}
+
 function deleteHistorySession(sid){
   const s=workoutSessions.find(x=>x.id===sid);
   if(!s)return;
@@ -4459,18 +4494,29 @@ function renderWorkoutBody(){
 
   const isBlank=s.dayId==='blank'||s.dayId.startsWith('tpl_');
   const isDraft=!workoutSessions.includes(s);
-  const draftHint=isDraft?`<div style="font-size:10px;color:var(--plum);margin-top:6px;font-weight:600;letter-spacing:.02em">👁 Preview — nothing is saved until you log a set. Switch Days freely.</div>`:'';
+  const isPastDate=new Date(activeWorkoutDate).setHours(0,0,0,0)<new Date().setHours(0,0,0,0);
+  // Banner: make it obvious whether the user is previewing (draft), live-
+  // logging today, or editing a saved past session.
+  let banner='';
+  if(isDraft){
+    banner=`<div style="font-size:10px;color:var(--plum);margin-top:6px;font-weight:600;letter-spacing:.02em">👁 Preview — nothing is saved until you log a set. Switch Days freely.</div>`;
+  }else if(isPastDate){
+    banner=`<div style="font-size:11px;color:var(--teal-deep);margin-top:6px;font-weight:700;letter-spacing:.02em">✎ Editing saved session — changes update this past log in place.</div>`;
+  }else{
+    banner=`<div style="font-size:10px;color:var(--lime);margin-top:6px;font-weight:600;letter-spacing:.02em">✓ Saved — changes are auto-logged.</div>`;
+  }
   const exerciseHTML=s.exercises.map((ex,ei)=>renderExerciseCard(ex,ei)).join('');
   el.innerHTML=`
     <div style="margin-top:6px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-soft)">
       <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em">${s.dayName}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">${s.exercises.length} exercise${s.exercises.length===1?'':'s'} · ${s.exercises.reduce((a,e)=>a+(e.sets||[]).length,0)} total sets planned</div>
-      ${draftHint}
+      ${banner}
     </div>
     ${exerciseHTML||'<div class="empty-state" style="padding-top:30px"><div class="es-icon">🤸</div><div class="es-txt">No exercises yet — tap "+ Add exercise" below.</div></div>'}
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise to today</button>
+      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise${isPastDate?'':' to today'}</button>
       ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}
+      ${!isDraft?`<button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>`:''}
       <button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>
     </div>
   `;
@@ -4481,6 +4527,7 @@ function renderWorkoutBody(){
       if(kind==='add-ex')openExercisePicker();
       else if(kind==='save-tpl')openSaveTemplate();
       else if(kind==='finish')finishWorkout();
+      else if(kind==='delete-session')deleteActiveSession();
     });
   });
   bindWorkoutInlineInputs();
@@ -4495,19 +4542,23 @@ const PAIR_TINTS={A:'rgba(31,194,192,.08)',B:'rgba(249,72,146,.08)',C:'rgba(255,
 // was trained. Ignores today's draft so "done today" doesn't show on the
 // very session you're currently logging. Used for the "rested Nd" nudge.
 function lastTrainedDaysAgo(exerciseName){
+  const viewDay=new Date(activeWorkoutDate).setHours(0,0,0,0);
   let latest=-Infinity;
   workoutSessions.forEach(s=>{
     if(s===activeWorkoutSession)return;
-    const ts=new Date(s.date).getTime();
+    const ts=new Date(s.date).setHours(0,0,0,0);
     if(!isFinite(ts))return;
+    // Only look at sessions strictly BEFORE the date being viewed. Future
+    // sessions (e.g. viewing April 20 when today is April 24) shouldn't
+    // light up a "Done today" badge.
+    if(ts>=viewDay)return;
     const ex=(s.exercises||[]).find(e=>e.name===exerciseName);
     if(!ex)return;
     const did=(ex.sets||[]).some(x=>x.completed||x.skipped||+x.weight||+x.reps);
     if(did&&ts>latest)latest=ts;
   });
   if(!isFinite(latest))return null;
-  const today=new Date(activeWorkoutDate).setHours(0,0,0,0);
-  return Math.max(0,Math.round((today-new Date(latest).setHours(0,0,0,0))/86400000));
+  return Math.max(0,Math.round((viewDay-latest)/86400000));
 }
 function pairInfo(ex,ei){
   const key=ex.pair||'';
