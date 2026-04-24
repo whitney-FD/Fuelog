@@ -628,8 +628,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <div style="padding:0 16px 6px"><select id="w-day-select" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist"></select></div>
-  <div id="w-day-chips" style="display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none"></div>
+  <div style="padding:0 16px 10px"><select id="w-day-select" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist"></select></div>
 
   <div id="w-screen-body" style="padding:0 16px 20px"></div>
 </div>
@@ -1521,12 +1520,17 @@ let activeWorkoutDayId=null; // which routine the user picked today
 let activeWorkoutSession=null; // { id, date, dayId, dayName, exercises:[{name,type,reps,sets:[{weight,reps,skipped}]}], notes }
 let activeWorkoutDate=new Date().toDateString();
 let wkoutEditExerciseIdx=-1;
+// When true, the user has tapped "✎ Edit" on a saved/finished/past session
+// so inline editing + add-exercise are unlocked. Reset on every navigation
+// (date change, day switch, history jump) so history stays read-only by
+// default.
+let savedSessionUnlocked=false;
 
 function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v:d}catch{return d}}
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v75 · 2026-04-24';
+const APP_VERSION='v77 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -4255,7 +4259,7 @@ function renderWorkoutScreen(){
   const hist=document.getElementById('w-history-btn');
   if(prev&&!prev._bound){prev._bound=true;prev.addEventListener('click',()=>shiftWorkoutDate(-1));}
   if(next&&!next._bound){next._bound=true;next.addEventListener('click',()=>shiftWorkoutDate(1));}
-  if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{discardDraftSessionIfEmpty();activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;renderWorkoutScreen();});}
+  if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{discardDraftSessionIfEmpty();activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;savedSessionUnlocked=false;expandedExIdx=-1;renderWorkoutScreen();});}
   if(prog&&!prog._bound){prog._bound=true;prog.addEventListener('click',openProgressView);}
   if(hist&&!hist._bound){hist._bound=true;hist.addEventListener('click',openHistoryView);}
   renderWorkoutDayChips();
@@ -4306,7 +4310,7 @@ function jumpToHistorySession(sid){
   activeWorkoutDate=s.date;
   activeWorkoutDayId=s.dayId;
   activeWorkoutSession=s;
-  expandedExIdx=-1;
+  savedSessionUnlocked=false;expandedExIdx=-1;
   closeOverlay('overlay-history');
   renderWorkoutScreen();
 }
@@ -4496,12 +4500,11 @@ function shiftWorkoutDate(delta){
   const d=new Date(activeWorkoutDate);d.setDate(d.getDate()+delta);
   activeWorkoutDate=d.toDateString();
   activeWorkoutDayId=null;activeWorkoutSession=null;
+  savedSessionUnlocked=false;expandedExIdx=-1;
   renderWorkoutScreen();
 }
 
 function renderWorkoutDayChips(){
-  const el=document.getElementById('w-day-chips');
-  if(!el)return;
   // Auto-restore today's session if there is one — so coming back to the
   // Workout tab picks up where the user left off instead of showing
   // "No session".
@@ -4510,24 +4513,13 @@ function renderWorkoutDayChips(){
   if(activeWorkoutDayId&&!activeWorkoutSession){
     activeWorkoutSession=workoutSessions.find(s=>s.date===activeWorkoutDate&&s.dayId===activeWorkoutDayId)||null;
   }
-  el.innerHTML=workoutRoutines.map(r=>{
-    const active=r.id===activeWorkoutDayId;
-    const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
-    const label=r.name.replace(/^Day (\d) · /,'D$1 · ');
-    return `<div class="slot-chip ${active?'active':logged?'has-food':''}" data-wday="${r.id}" style="${active?'':'border-color:'+(logged?'var(--lime-dim)':'var(--border)')}">${label}</div>`;
-  }).join('');
-  el.querySelectorAll('[data-wday]').forEach(chip=>{
-    chip.addEventListener('click',()=>{pickWorkoutDay(chip.dataset.wday);});
-  });
-  // Dropdown mirrors the chips for users who prefer a selector.
   const sel=document.getElementById('w-day-select');
-  if(sel){
-    sel.innerHTML='<option value="">-- Pick a day --</option>'+workoutRoutines.map(r=>{
-      const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
-      return `<option value="${r.id}" ${r.id===activeWorkoutDayId?'selected':''}>${logged?'✓ ':''}${r.name}</option>`;
-    }).join('');
-    if(!sel._bound){sel._bound=true;sel.addEventListener('change',()=>{if(sel.value)pickWorkoutDay(sel.value);});}
-  }
+  if(!sel)return;
+  sel.innerHTML='<option value="">-- Pick a day --</option>'+workoutRoutines.map(r=>{
+    const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
+    return `<option value="${r.id}" ${r.id===activeWorkoutDayId?'selected':''}>${logged?'✓ ':''}${r.name}</option>`;
+  }).join('');
+  if(!sel._bound){sel._bound=true;sel.addEventListener('change',()=>{if(sel.value)pickWorkoutDay(sel.value);});}
 }
 
 function pickWorkoutDay(dayId){
@@ -4535,6 +4527,7 @@ function pickWorkoutDay(dayId){
   // drop that draft so we don't leave orphaned empty sessions behind.
   if(activeWorkoutDayId&&activeWorkoutDayId!==dayId)discardDraftSessionIfEmpty();
   activeWorkoutDayId=dayId;
+  savedSessionUnlocked=false;expandedExIdx=-1;
   ensureActiveSession();
   renderWorkoutDayChips();
   renderWorkoutBody();
@@ -4552,34 +4545,83 @@ function renderWorkoutBody(){
 
   const isBlank=s.dayId==='blank'||s.dayId.startsWith('tpl_');
   const isDraft=!workoutSessions.includes(s);
-  const isPastDate=new Date(activeWorkoutDate).setHours(0,0,0,0)<new Date().setHours(0,0,0,0);
-  // Banner: make it obvious whether the user is previewing (draft), live-
-  // logging today, or editing a saved past session.
+  const viewDayTs=new Date(activeWorkoutDate).setHours(0,0,0,0);
+  const todayTs=new Date().setHours(0,0,0,0);
+  const isPastDate=viewDayTs<todayTs;
+  const isFutureDate=viewDayTs>todayTs;
+  const isFinished=!isDraft&&!!s.finished;
+  // A saved session is locked by default whenever it's history OR the user
+  // has hit Finish on today's workout. The user explicitly taps ✎ Edit to
+  // re-enable inline editing + add-exercise.
+  const shouldLock=(!isDraft)&&(isPastDate||isFinished);
+  const locked=shouldLock&&!savedSessionUnlocked;
+  // Visual state accents.
+  const isHistoryView=!isDraft&&isPastDate;
+  const headerBg=isHistoryView?'linear-gradient(135deg,rgba(111,75,191,.12),rgba(31,194,192,.08))':isFinished?'linear-gradient(135deg,rgba(31,194,192,.1),rgba(163,230,53,.05))':'var(--s2)';
+  const headerBorder=isHistoryView?'1.5px solid var(--plum)':isFinished?'1.5px solid var(--teal-bright)':'1px solid var(--border)';
   let banner='';
+  let tag='';
   if(isDraft){
-    banner=`<div style="font-size:10px;color:var(--plum);margin-top:6px;font-weight:600;letter-spacing:.02em">👁 Preview — nothing is saved until you log a set. Switch Days freely.</div>`;
+    banner=`<div style="font-size:11px;color:var(--plum);margin-top:6px;font-weight:700;letter-spacing:.04em">👁 PREVIEW — nothing saves until you log a set</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:rgba(111,75,191,.15);color:var(--plum);border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Preview</span>`;
   }else if(isPastDate){
-    banner=`<div style="font-size:11px;color:var(--teal-deep);margin-top:6px;font-weight:700;letter-spacing:.02em">✎ Editing saved session — changes update this past log in place.</div>`;
+    banner=locked
+      ?`<div style="font-size:11px;color:var(--plum);margin-top:6px;font-weight:700;letter-spacing:.04em">🔒 LOCKED — tap ✎ Edit below to change anything</div>`
+      :`<div style="font-size:11px;color:var(--plum);margin-top:6px;font-weight:700;letter-spacing:.04em">✎ EDITING — changes save as you type. Tap Done when finished.</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:var(--plum);color:#fff;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">📜 History${locked?' · Locked':' · Editing'}</span>`;
+  }else if(isFinished){
+    banner=locked
+      ?`<div style="font-size:11px;color:var(--teal-deep);margin-top:6px;font-weight:700;letter-spacing:.04em">🔒 FINISHED — tap ✎ Edit to add an exercise or fix a set</div>`
+      :`<div style="font-size:11px;color:var(--teal-deep);margin-top:6px;font-weight:700;letter-spacing:.04em">✎ EDITING — changes save as you type. Tap Done when finished.</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:var(--g-teal);color:#fff;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">✓ Finished${locked?' · Locked':' · Editing'}</span>`;
   }else{
-    banner=`<div style="font-size:10px;color:var(--lime);margin-top:6px;font-weight:600;letter-spacing:.02em">✓ Saved — changes are auto-logged.</div>`;
+    banner=`<div style="font-size:11px;color:var(--lime);margin-top:6px;font-weight:700;letter-spacing:.04em">● LOGGING — changes auto-save. Tap ✓ Finish when done.</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:rgba(163,230,53,.18);color:var(--lime);border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Today</span>`;
   }
-  const exerciseHTML=s.exercises.map((ex,ei)=>renderExerciseCard(ex,ei)).join('');
+  // When locked, force compact (read-only) rendering of every card.
+  if(locked)expandedExIdx=-1;
+  const exerciseHTML=s.exercises.map((ex,ei)=>renderExerciseCard(ex,ei,locked)).join('');
+  // Button composition depends on state:
+  //   locked  → [Edit] [Move] [Delete]
+  //   editing a saved session → [Add ex] [Move] [Delete] [Done editing]
+  //   logging today (not finished) → [Add ex] [Finish]
+  //   draft preview → [Add ex]
+  let buttons='';
+  if(locked){
+    buttons=`
+      <button class="btn-full" data-wbtn="toggle-edit" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✎ Edit session</button>
+      <button class="btn-full secondary" data-wbtn="move-session" style="flex:1 1 100%">📅 Move to different date / Day</button>
+      <button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>`;
+  }else if(shouldLock&&savedSessionUnlocked){
+    buttons=`
+      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise to this session</button>
+      ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save as a template</button>`:''}
+      <button class="btn-full secondary" data-wbtn="move-session" style="flex:1 1 100%">📅 Move to different date / Day</button>
+      <button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>
+      <button class="btn-full" data-wbtn="toggle-edit" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Done editing</button>`;
+  }else if(isDraft){
+    buttons=`
+      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise to today</button>
+      ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}`;
+  }else{
+    // Logging today, not yet finished
+    buttons=`
+      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise to today</button>
+      ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}
+      <button class="btn-full secondary" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.05);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>
+      <button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>`;
+  }
   el.innerHTML=`
-    <div style="margin-top:6px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-soft)">
+    <div style="margin-top:6px;padding:14px 16px;background:${headerBg};border:${headerBorder};border-radius:18px;box-shadow:var(--shadow-soft)">
+      ${tag}
       <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em">${s.dayName}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">${s.exercises.length} exercise${s.exercises.length===1?'':'s'} · ${s.exercises.reduce((a,e)=>a+(e.sets||[]).length,0)} total sets planned</div>
       ${banner}
     </div>
     ${exerciseHTML||'<div class="empty-state" style="padding-top:30px"><div class="es-icon">🤸</div><div class="es-txt">No exercises yet — tap "+ Add exercise" below.</div></div>'}
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise${isPastDate?'':' to today'}</button>
-      ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}
-      ${!isDraft?`<button class="btn-full secondary" data-wbtn="move-session" style="flex:1 1 100%">📅 Move to different date / Day</button>`:''}
-      ${!isDraft?`<button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>`:''}
-      <button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>
-    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${buttons}</div>
   `;
-  // Wire up buttons + set inputs programmatically.
+  // Wire up buttons.
   el.querySelectorAll('[data-wbtn]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const kind=btn.dataset.wbtn;
@@ -4588,9 +4630,12 @@ function renderWorkoutBody(){
       else if(kind==='finish')finishWorkout();
       else if(kind==='move-session')openMoveSession();
       else if(kind==='delete-session')deleteActiveSession();
+      else if(kind==='toggle-edit')toggleEditSavedSession();
     });
   });
-  bindWorkoutInlineInputs();
+  // Only bind inline input handlers when NOT locked — locked cards are read-
+  // only so the row-click-to-expand and input change listeners are skipped.
+  if(!locked)bindWorkoutInlineInputs();
 }
 
 // Pair palette — six easily distinguishable colors cycled by pair letter.
@@ -4634,7 +4679,7 @@ function pairInfo(ex,ei){
   return{key,color,tint,slot};
 }
 
-function renderExerciseCard(ex,ei){
+function renderExerciseCard(ex,ei,locked){
   const isMob=ex.type==='mobility';
   const isStr=ex.type==='strength';
   // "Timed" exercises — weighted holds like Weighted Plank (type=hypertrophy
@@ -4705,8 +4750,10 @@ function renderExerciseCard(ex,ei){
       const cellStyle=isHint?'background:transparent;opacity:.55;font-style:italic':(filled?'background:var(--s1)':'background:transparent');
       return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;${cellStyle};border:1px solid ${cellBorder};border-radius:5px;font-size:10px;color:${cellColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
     }).join('');
+    const rowCursor=locked?'default':'pointer';
+    const chevron=locked?'':`<span style="color:var(--muted);font-size:10px;flex-shrink:0">▾</span>`;
     return `
-    <div class="w-ex-row" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:pointer${recentFade}">
+    <div class="${locked?'w-ex-row-locked':'w-ex-row'}" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:${rowCursor}${recentFade}">
       <div style="display:flex;gap:8px;align-items:center">
         ${pairTag}
         <div style="flex:1;min-width:0">
@@ -4716,7 +4763,7 @@ function renderExerciseCard(ex,ei){
             · ${ex.reps} · ${rest}
           </div>
         </div>
-        <span style="color:var(--muted);font-size:10px;flex-shrink:0">▾</span>
+        ${chevron}
       </div>
       <div style="display:flex;gap:3px;margin-top:5px">${setCells}</div>
     </div>`;
@@ -5012,8 +5059,21 @@ function insertExerciseIntoSession(ex){
 }
 
 function finishWorkout(){
-  if(!activeWorkoutSession){toast('Pick a day first');return;}
-  toast('Workout saved ✓',2500);
+  const s=activeWorkoutSession;
+  if(!s){toast('Pick a day first');return;}
+  if(!sessionHasData(s)){toast('Log at least one set first');return;}
+  s.finished=true;
+  commitActiveSession();
+  savedSessionUnlocked=false;
+  expandedExIdx=-1;
+  toast('✓ Workout finished — locked. Tap Edit to tweak.',3000);
+  renderWorkoutBody();
+}
+
+function toggleEditSavedSession(){
+  savedSessionUnlocked=!savedSessionUnlocked;
+  if(!savedSessionUnlocked)expandedExIdx=-1;
+  renderWorkoutBody();
 }
 
 function openSaveTemplate(){
