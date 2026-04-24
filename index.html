@@ -628,8 +628,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <div style="padding:0 16px 6px"><select id="w-day-select" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist"></select></div>
-  <div id="w-day-chips" style="display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none"></div>
+  <div style="padding:0 16px 10px"><select id="w-day-select" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist"></select></div>
 
   <div id="w-screen-body" style="padding:0 16px 20px"></div>
 </div>
@@ -1526,7 +1525,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v75 · 2026-04-24';
+const APP_VERSION='v76 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -4500,8 +4499,6 @@ function shiftWorkoutDate(delta){
 }
 
 function renderWorkoutDayChips(){
-  const el=document.getElementById('w-day-chips');
-  if(!el)return;
   // Auto-restore today's session if there is one — so coming back to the
   // Workout tab picks up where the user left off instead of showing
   // "No session".
@@ -4510,24 +4507,13 @@ function renderWorkoutDayChips(){
   if(activeWorkoutDayId&&!activeWorkoutSession){
     activeWorkoutSession=workoutSessions.find(s=>s.date===activeWorkoutDate&&s.dayId===activeWorkoutDayId)||null;
   }
-  el.innerHTML=workoutRoutines.map(r=>{
-    const active=r.id===activeWorkoutDayId;
-    const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
-    const label=r.name.replace(/^Day (\d) · /,'D$1 · ');
-    return `<div class="slot-chip ${active?'active':logged?'has-food':''}" data-wday="${r.id}" style="${active?'':'border-color:'+(logged?'var(--lime-dim)':'var(--border)')}">${label}</div>`;
-  }).join('');
-  el.querySelectorAll('[data-wday]').forEach(chip=>{
-    chip.addEventListener('click',()=>{pickWorkoutDay(chip.dataset.wday);});
-  });
-  // Dropdown mirrors the chips for users who prefer a selector.
   const sel=document.getElementById('w-day-select');
-  if(sel){
-    sel.innerHTML='<option value="">-- Pick a day --</option>'+workoutRoutines.map(r=>{
-      const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
-      return `<option value="${r.id}" ${r.id===activeWorkoutDayId?'selected':''}>${logged?'✓ ':''}${r.name}</option>`;
-    }).join('');
-    if(!sel._bound){sel._bound=true;sel.addEventListener('change',()=>{if(sel.value)pickWorkoutDay(sel.value);});}
-  }
+  if(!sel)return;
+  sel.innerHTML='<option value="">-- Pick a day --</option>'+workoutRoutines.map(r=>{
+    const logged=workoutSessions.some(s=>s.date===activeWorkoutDate&&s.dayId===r.id);
+    return `<option value="${r.id}" ${r.id===activeWorkoutDayId?'selected':''}>${logged?'✓ ':''}${r.name}</option>`;
+  }).join('');
+  if(!sel._bound){sel._bound=true;sel.addEventListener('change',()=>{if(sel.value)pickWorkoutDay(sel.value);});}
 }
 
 function pickWorkoutDay(dayId){
@@ -4552,31 +4538,45 @@ function renderWorkoutBody(){
 
   const isBlank=s.dayId==='blank'||s.dayId.startsWith('tpl_');
   const isDraft=!workoutSessions.includes(s);
-  const isPastDate=new Date(activeWorkoutDate).setHours(0,0,0,0)<new Date().setHours(0,0,0,0);
-  // Banner: make it obvious whether the user is previewing (draft), live-
-  // logging today, or editing a saved past session.
+  const viewDayTs=new Date(activeWorkoutDate).setHours(0,0,0,0);
+  const todayTs=new Date().setHours(0,0,0,0);
+  const isPastDate=viewDayTs<todayTs;
+  const isFutureDate=viewDayTs>todayTs;
+  // Visual state: different header accent + banner for draft / saved-today /
+  // history so there's no ambiguity at a glance.
+  const isHistory=!isDraft&&isPastDate;
+  const headerBg=isHistory?'linear-gradient(135deg,rgba(111,75,191,.12),rgba(31,194,192,.08))':'var(--s2)';
+  const headerBorder=isHistory?'1.5px solid var(--plum)':'1px solid var(--border)';
   let banner='';
+  let tag='';
   if(isDraft){
-    banner=`<div style="font-size:10px;color:var(--plum);margin-top:6px;font-weight:600;letter-spacing:.02em">👁 Preview — nothing is saved until you log a set. Switch Days freely.</div>`;
+    banner=`<div style="font-size:11px;color:var(--plum);margin-top:6px;font-weight:700;letter-spacing:.04em">👁 PREVIEW — nothing saves until you log a set</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:rgba(111,75,191,.15);color:var(--plum);border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Preview</span>`;
   }else if(isPastDate){
-    banner=`<div style="font-size:11px;color:var(--teal-deep);margin-top:6px;font-weight:700;letter-spacing:.02em">✎ Editing saved session — changes update this past log in place.</div>`;
+    banner=`<div style="font-size:11px;color:var(--plum);margin-top:6px;font-weight:700;letter-spacing:.04em">✎ HISTORY — edits update this past log in place</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:var(--plum);color:#fff;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">📜 History</span>`;
   }else{
-    banner=`<div style="font-size:10px;color:var(--lime);margin-top:6px;font-weight:600;letter-spacing:.02em">✓ Saved — changes are auto-logged.</div>`;
+    banner=`<div style="font-size:11px;color:var(--lime);margin-top:6px;font-weight:700;letter-spacing:.04em">● LOGGING — changes auto-save</div>`;
+    tag=`<span style="display:inline-block;margin-bottom:6px;padding:2px 8px;background:rgba(163,230,53,.18);color:var(--lime);border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Today</span>`;
   }
   const exerciseHTML=s.exercises.map((ex,ei)=>renderExerciseCard(ex,ei)).join('');
+  // Finish button only makes sense when logging today — hide on history +
+  // future previews.
+  const showFinish=!isPastDate&&!isFutureDate;
   el.innerHTML=`
-    <div style="margin-top:6px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-soft)">
+    <div style="margin-top:6px;padding:14px 16px;background:${headerBg};border:${headerBorder};border-radius:18px;box-shadow:var(--shadow-soft)">
+      ${tag}
       <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em">${s.dayName}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">${s.exercises.length} exercise${s.exercises.length===1?'':'s'} · ${s.exercises.reduce((a,e)=>a+(e.sets||[]).length,0)} total sets planned</div>
       ${banner}
     </div>
     ${exerciseHTML||'<div class="empty-state" style="padding-top:30px"><div class="es-icon">🤸</div><div class="es-txt">No exercises yet — tap "+ Add exercise" below.</div></div>'}
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise${isPastDate?'':' to today'}</button>
+      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise${isPastDate?' to this session':' to today'}</button>
       ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}
       ${!isDraft?`<button class="btn-full secondary" data-wbtn="move-session" style="flex:1 1 100%">📅 Move to different date / Day</button>`:''}
       ${!isDraft?`<button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>`:''}
-      <button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>
+      ${showFinish?`<button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>`:''}
     </div>
   `;
   // Wire up buttons + set inputs programmatically.
