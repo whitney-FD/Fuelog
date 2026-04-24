@@ -619,9 +619,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
         <button id="w-next-day" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:16px;cursor:pointer">›</button>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:6px;flex-wrap:wrap">
       <div class="page-sub" id="w-date-sub" style="margin:0"></div>
-      <button id="w-progress-btn" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📈 Progress</button>
+      <div style="display:flex;gap:6px">
+        <button id="w-history-btn" style="background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📜 History</button>
+        <button id="w-progress-btn" style="background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.06em">📈 Progress</button>
+      </div>
     </div>
   </div>
 
@@ -670,6 +673,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <input class="field-input" type="text" id="template-name" placeholder="e.g. Push & Pull Combo">
     <button class="btn-full" id="btn-save-template" style="background:var(--g-teal);color:#fff">Save template</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-save-template')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: WORKOUT HISTORY — list past sessions, edit/delete -->
+<div class="overlay" id="overlay-history" onclick="closeOverlay('overlay-history')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;margin:0 auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📜 Workout History</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4">Tap <b>✎</b> to jump to that session for editing. Tap <b>✕</b> to delete it permanently.</div>
+    <div id="history-list" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+    <button class="btn-full secondary" onclick="closeOverlay('overlay-history')" style="margin-top:10px">Done</button>
   </div>
 </div>
 
@@ -777,6 +791,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </label>
     <div class="goal-section-title">Danger Zone</div>
     <button class="btn-full secondary" onclick="clearToday()">Clear Today's Log</button>
+    <button class="btn-full secondary" onclick="forceRefresh()" style="margin-top:6px">🔄 Force refresh (pull latest update)</button>
+    <div id="app-version" style="text-align:center;font-size:10px;color:var(--muted);margin-top:12px;letter-spacing:.08em"></div>
   </div>
 </div>
 
@@ -821,7 +837,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="macro-field"><label>Carbs g</label><input type="number" id="edit-carbs"></div>
       <div class="macro-field"><label>Fat g</label><input type="number" id="edit-fat"></div>
       <div class="macro-field"><label>Fiber g</label><input type="number" id="edit-fiber"></div>
+      <div class="macro-field"><label>Sugar g</label><input type="number" id="edit-sugar" step="any"></div>
+      <div class="macro-field"><label>Sodium mg</label><input type="number" id="edit-sodium" step="any"></div>
       <div class="macro-field"><label>Vitamin A %</label><input type="number" id="edit-vita"></div>
+      <div class="macro-field"><label>Iron mg</label><input type="number" id="edit-iron" step="any"></div>
     </div>
     <button class="btn-full" onclick="saveEditEntry()">Save Changes</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-edit')">Cancel</button>
@@ -981,7 +1000,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="macro-field"><label>Carbs g</label><input type="number" id="tw-carbs"></div>
       <div class="macro-field"><label>Fat g</label><input type="number" id="tw-fat"></div>
       <div class="macro-field"><label>Fiber g</label><input type="number" id="tw-fiber"></div>
+      <div class="macro-field"><label>Sugar g</label><input type="number" id="tw-sugar" step="any"></div>
+      <div class="macro-field"><label>Sodium mg</label><input type="number" id="tw-sodium" step="any"></div>
       <div class="macro-field"><label>Vitamin A %</label><input type="number" id="tw-vita"></div>
+      <div class="macro-field"><label>Iron mg</label><input type="number" id="tw-iron" step="any"></div>
     </div>
     <button class="btn-full" onclick="saveTweakedRecipe()">Save as New Recipe</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-tweak')">Cancel</button>
@@ -1489,9 +1511,13 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
+const APP_VERSION='v74 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
+    // Check for updates every 30 min while the app is open, so users on
+    // long-running PWA sessions see new builds without a full app kill.
+    setInterval(()=>{try{reg.update();}catch{}},30*60*1000);
     reg.addEventListener('updatefound',()=>{
       const nw=reg.installing;
       nw.addEventListener('statechange',()=>{
@@ -1505,6 +1531,22 @@ if('serviceWorker' in navigator){
 function applyUpdate(){
   if(swReg&&swReg.waiting){swReg.waiting.postMessage('skipWaiting');}
   window.location.reload();
+}
+async function forceRefresh(){
+  // Unregister SW, drop caches, then hard-reload so the user sees the newest
+  // HTML + assets no matter what was cached.
+  toast('Fetching latest…',1500);
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if(self.caches){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch{}
+  setTimeout(()=>{window.location.reload();},400);
 }
 
 // ══ INIT ══
@@ -1547,7 +1589,7 @@ function gotoScreen(name,btn){
   if(name==='week')buildWeek();
   if(name==='recipes')renderRecipes();
   if(name==='workout')renderWorkoutScreen();
-  if(name==='goals'){renderSuppManager();renderNutrientToggles();}
+  if(name==='goals'){renderSuppManager();renderNutrientToggles();const ve=document.getElementById('app-version');if(ve)ve.textContent='Fuelog '+APP_VERSION;}
 }
 function openQuickNav(name){
   const idx={today:0,week:1,recipes:2,workout:3,goals:4};
@@ -1608,7 +1650,7 @@ function totals(arr){
 function addToLibrary(entry){
   const existing=foodLibrary.find(f=>f.name.toLowerCase()===entry.name.toLowerCase());
   if(existing){existing.count=(existing.count||1)+1;existing.lastUsed=Date.now();}
-  else{foodLibrary.push({name:entry.name,cal:entry.cal,prot:entry.prot,carbs:entry.carbs,fat:entry.fat,fiber:entry.fiber,vita:entry.vita,serving:entry.serving||'',count:1,lastUsed:Date.now()});}
+  else{foodLibrary.push({name:entry.name,cal:entry.cal,prot:entry.prot,carbs:entry.carbs,fat:entry.fat,fiber:entry.fiber,vita:entry.vita,iron:entry.iron||0,sodium:entry.sodium||0,sugar:entry.sugar||0,serving:entry.serving||'',count:1,lastUsed:Date.now()});}
   S('fl_foods',foodLibrary);
 }
 
@@ -1775,7 +1817,12 @@ function doSearch(q){
           const n=p.nutriments||{};
           const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
           const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
-          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,src:'off'};
+          // OFF stores iron_100g in grams — convert to mg (× 1000) and scale
+          // by the per-serving ratio. sodium_100g is in grams too; sugars_100g in grams.
+          const ironMg=Math.round((n.iron_100g||0)*ratio*1000*10)/10;
+          const sodMg=Math.round((n.sodium_100g||0)*ratio*1000);
+          const sugarG=Math.round((n.sugars_100g||0)*ratio*10)/10;
+          return{name:p.product_name+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),iron:ironMg,sodium:sodMg,sugar:sugarG,serving:servingLabel,src:'off'};
         });
       }
       renderSearchResults(q,matchedRecipes,mine,offResults,'done');
@@ -1790,7 +1837,7 @@ function doSearch(q){
 function logFromLibrary(f){
   closeSearchResults();
   document.getElementById('food-ta').value='';
-  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs||0,fat:f.fat||0,fiber:f.fiber||0,vita:f.vita||0,serving:f.serving||'',conf:'high',note:'',slot:currentSlot(),src:'library',time:nowTime()});
+  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs||0,fat:f.fat||0,fiber:f.fiber||0,vita:f.vita||0,iron:f.iron||0,sodium:f.sodium||0,sugar:f.sugar||0,serving:f.serving||'',conf:'high',note:'',slot:currentSlot(),src:'library',time:nowTime()});
   addToLibrary(f);
   refreshCoach();
 }
@@ -1798,7 +1845,7 @@ function logFromLibrary(f){
 function logFromOFF(f){
   closeSearchResults();
   document.getElementById('food-ta').value='';
-  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs,fat:f.fat,fiber:f.fiber,vita:f.vita,serving:f.serving,conf:'high',note:'',slot:currentSlot(),src:'off',time:nowTime()});
+  addEntry({id:Date.now(),name:f.name,cal:f.cal,prot:f.prot,carbs:f.carbs,fat:f.fat,fiber:f.fiber,vita:f.vita,iron:f.iron||0,sodium:f.sodium||0,sugar:f.sugar||0,serving:f.serving,conf:'high',note:'',slot:currentSlot(),src:'off',time:nowTime()});
   addToLibrary(f);
   refreshCoach();
   toast('Logged: '+f.name);
@@ -1823,8 +1870,8 @@ async function logFoodAI(text){
     const r=await callClaude(
       `You are a nutrition database. The user may describe one OR multiple foods separated by commas or "and".
 Return ONLY a valid JSON array — one object per distinct food item. Never lump multiple foods into one entry. Recipes or named dishes count as one item.
-Each object: {"name":"display name","cal":number,"prot":number,"carbs":number,"fat":number,"fiber":number,"vita":number,"serving":"portion description","conf":"high|medium|low","note":"accuracy note if not high"}
-Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate. No markdown, no explanation, just the JSON array.`,
+Each object: {"name":"display name","cal":number,"prot":number,"carbs":number,"fat":number,"fiber":number,"vita":number,"iron":number,"sodium":number,"sugar":number,"serving":"portion description","conf":"high|medium|low","note":"accuracy note if not high"}
+Use USDA FoodData Central values. vita=Vitamin A % DV; iron in mg; sodium in mg; sugar in g. Be realistic and accurate. No markdown, no explanation, just the JSON array.`,
       q
     );
     // Robust JSON extraction: Claude sometimes wraps its answer in prose,
@@ -1850,7 +1897,7 @@ Use USDA FoodData Central values. vita=Vitamin A % DV. Be realistic and accurate
     const slot=currentSlot();
     const t=nowTime();
     foods.forEach((food,i)=>{
-      const entry={id:Date.now()+i,name:food.name,cal:food.cal||0,prot:food.prot||0,carbs:food.carbs||0,fat:food.fat||0,fiber:food.fiber||0,vita:food.vita||0,serving:food.serving||'',conf:food.conf||'high',note:food.note||'',slot,src:'ai',time:t};
+      const entry={id:Date.now()+i,name:food.name,cal:food.cal||0,prot:food.prot||0,carbs:food.carbs||0,fat:food.fat||0,fiber:food.fiber||0,vita:food.vita||0,iron:food.iron||0,sodium:food.sodium||0,sugar:food.sugar||0,serving:food.serving||'',conf:food.conf||'high',note:food.note||'',slot,src:'ai',time:t};
       addEntry(entry);
       addToLibrary(entry);
     });
@@ -1894,7 +1941,10 @@ function openEditEntry(id){
   document.getElementById('edit-carbs').value=e.carbs||0;
   document.getElementById('edit-fat').value=e.fat||0;
   document.getElementById('edit-fiber').value=e.fiber||0;
+  document.getElementById('edit-sugar').value=e.sugar||0;
+  document.getElementById('edit-sodium').value=e.sodium||0;
   document.getElementById('edit-vita').value=e.vita||0;
+  document.getElementById('edit-iron').value=e.iron||0;
   openOverlay('overlay-edit');
 }
 
@@ -1983,7 +2033,10 @@ async function lookupBarcode(code){
       const p=data.product;const n=p.nutriments||{};
       const srvG=parseServingGrams(p);const ratio=srvG?srvG/100:1;
       const servingLabel=p.serving_size||(srvG?srvG+'g':'per 100g');
-      const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),serving:servingLabel,conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
+      const ironMg=Math.round((n.iron_100g||0)*ratio*1000*10)/10;
+      const sodMg=Math.round((n.sodium_100g||0)*ratio*1000);
+      const sugarG=Math.round((n.sugars_100g||0)*ratio*10)/10;
+      const entry={id:Date.now(),name:(p.product_name||'Unknown')+(p.brands?` (${p.brands})`:''),cal:Math.round((n['energy-kcal_100g']||0)*ratio),prot:Math.round((n.proteins_100g||0)*ratio*10)/10,carbs:Math.round((n.carbohydrates_100g||0)*ratio*10)/10,fat:Math.round((n.fat_100g||0)*ratio*10)/10,fiber:Math.round((n.fiber_100g||0)*ratio*10)/10,vita:Math.round((n['vitamin-a_daily_value']||0)*ratio),iron:ironMg,sodium:sodMg,sugar:sugarG,serving:servingLabel,conf:'high',note:'',slot:currentSlot(),src:'barcode',time:nowTime()};
       addEntry(entry);addToLibrary(entry);refreshCoach();
       toast('✓ Logged: '+entry.name+' — '+entry.cal+' cal',4000);
       return;
@@ -2715,7 +2768,7 @@ function logRecipeServing(){
   const targetDate=new Date();targetDate.setDate(targetDate.getDate()+dayOffset);
   const targetKey=targetDate.toDateString();
   const mul=qty/r.servings;
-  const entry={id:Date.now(),name:r.name+(qty!==1?` (${qty} servings)`:''),cal:Math.round(r.cal*mul),prot:Math.round(r.prot*mul*10)/10,carbs:Math.round(r.carbs*mul*10)/10,fat:Math.round(r.fat*mul*10)/10,fiber:Math.round(r.fiber*mul*10)/10,vita:Math.round(r.vita*mul),serving:qty+' serving'+(qty!==1?'s':''),conf:'high',note:'',slot,src:'recipe',time:nowTime()};
+  const entry={id:Date.now(),name:r.name+(qty!==1?` (${qty} servings)`:''),cal:Math.round(r.cal*mul),prot:Math.round(r.prot*mul*10)/10,carbs:Math.round(r.carbs*mul*10)/10,fat:Math.round(r.fat*mul*10)/10,fiber:Math.round(r.fiber*mul*10)/10,vita:Math.round((r.vita||0)*mul),iron:Math.round((r.iron||0)*mul*10)/10,sodium:Math.round((r.sodium||0)*mul),sugar:Math.round((r.sugar||0)*mul*10)/10,serving:qty+' serving'+(qty!==1?'s':''),conf:'high',note:'',slot,src:'recipe',time:nowTime()};
   addToLibrary(entry);
   // Save to target day
   const targetEntries=J('fl_e_'+targetKey,[]);
@@ -2747,9 +2800,9 @@ async function aiTweakRecipe(){
   if(!goals.apiKey||!goals.apiKey.startsWith('sk-ant')){toast('Add API key in Goals tab');return}
   const srvs=+document.getElementById('tw-servings').value||base.servings;toast('Recalculating...');
   try{
-    const r=await callClaude(`Return updated total batch macros as JSON only: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n}`,`Original (${base.servings} srv): cal=${base.cal},prot=${base.prot}g,carbs=${base.carbs}g,fat=${base.fat}g,fiber=${base.fiber}g. Notes: ${base.notes||'none'}. Changes: ${changes}. New servings: ${srvs}.`);
+    const r=await callClaude(`Return updated total batch macros as JSON only: {"cal":n,"prot":n,"carbs":n,"fat":n,"fiber":n,"vita":n,"iron":n,"sodium":n,"sugar":n}. vita=Vitamin A %DV; iron and sodium in mg; sugar in g.`,`Original (${base.servings} srv): cal=${base.cal},prot=${base.prot}g,carbs=${base.carbs}g,fat=${base.fat}g,fiber=${base.fiber}g,vita=${base.vita||0}%,iron=${base.iron||0}mg,sodium=${base.sodium||0}mg,sugar=${base.sugar||0}g. Notes: ${base.notes||'none'}. Changes: ${changes}. New servings: ${srvs}.`);
     const m=JSON.parse(r.replace(/```json|```/g,'').trim());
-    ['cal','prot','carbs','fat','fiber','vita'].forEach(k=>{document.getElementById('tw-'+k).value=m[k]||0});
+    ['cal','prot','carbs','fat','fiber','vita','iron','sodium','sugar'].forEach(k=>{const el=document.getElementById('tw-'+k);if(el)el.value=m[k]||0;});
     document.getElementById('tw-macros-grid').style.display='grid';toast('Done!');
   }catch{toast('Could not recalculate')}
 }
@@ -2758,7 +2811,7 @@ function saveTweakedRecipe(){
   const name=document.getElementById('tw-name').value.trim();const srvs=+document.getElementById('tw-servings').value;
   if(!name||!srvs){toast('Name and servings required');return}
   const base=recipes.find(x=>x.id===tweakBaseId);
-  recipes.push({id:Date.now(),name,servings:srvs,notes:`Tweaked from "${base?.name}": ${document.getElementById('tw-changes').value}`,cal:+document.getElementById('tw-cal').value||base?.cal||0,prot:+document.getElementById('tw-prot').value||base?.prot||0,carbs:+document.getElementById('tw-carbs').value||base?.carbs||0,fat:+document.getElementById('tw-fat').value||base?.fat||0,fiber:+document.getElementById('tw-fiber').value||base?.fiber||0,vita:+document.getElementById('tw-vita').value||base?.vita||0,course:base?.course||'none',cats:base?.cats||[],photo:base?.photo||null,favorite:false,baseId:tweakBaseId,created:Date.now()});
+  recipes.push({id:Date.now(),name,servings:srvs,notes:`Tweaked from "${base?.name}": ${document.getElementById('tw-changes').value}`,cal:+document.getElementById('tw-cal').value||base?.cal||0,prot:+document.getElementById('tw-prot').value||base?.prot||0,carbs:+document.getElementById('tw-carbs').value||base?.carbs||0,fat:+document.getElementById('tw-fat').value||base?.fat||0,fiber:+document.getElementById('tw-fiber').value||base?.fiber||0,vita:+document.getElementById('tw-vita').value||base?.vita||0,iron:+document.getElementById('tw-iron').value||base?.iron||0,sodium:+document.getElementById('tw-sodium').value||base?.sodium||0,sugar:+document.getElementById('tw-sugar').value||base?.sugar||0,course:base?.course||'none',cats:base?.cats||[],photo:base?.photo||null,favorite:false,baseId:tweakBaseId,created:Date.now()});
   S('fl_recipes',recipes);closeOverlay('overlay-tweak');renderRecipes();toast('Tweaked recipe saved!');
 }
 
@@ -3402,7 +3455,10 @@ function saveEditEntry(){
     e.carbs=Math.round(+document.getElementById('edit-carbs').value*qty*10)/10;
     e.fat=Math.round(+document.getElementById('edit-fat').value*qty*10)/10;
     e.fiber=Math.round(+document.getElementById('edit-fiber').value*qty*10)/10;
+    e.sugar=Math.round(+document.getElementById('edit-sugar').value*qty*10)/10;
+    e.sodium=Math.round(+document.getElementById('edit-sodium').value*qty);
     e.vita=Math.round(+document.getElementById('edit-vita').value*qty);
+    e.iron=Math.round(+document.getElementById('edit-iron').value*qty*10)/10;
     // Clear the AI low-confidence flag and warning note once the user has
     // reviewed/edited — they've taken ownership of the numbers.
     if(e.conf==='low')e.conf='medium';
@@ -4125,13 +4181,17 @@ function sessionHasData(s){
   if(!s||!Array.isArray(s.exercises))return false;
   return s.exercises.some(e=>(e.sets||[]).some(set=>set.skipped||set.completed||+set.weight||+set.reps));
 }
-// Commit the active session to workoutSessions + localStorage. Call this
-// after any real data change. If it's still a draft (not yet in the array),
-// push it now. Callers don't need to check — safe to call any time.
+// Commit the active session to workoutSessions + localStorage.
+// Drafts stay in memory ONLY — we persist the first time the user actually
+// logs real work (weight/reps/skipped/completed). This prevents chip-tap
+// previews + cosmetic tweaks (pair colour, reorder) from creating phantom
+// history entries the user never meant to save.
 function commitActiveSession(){
   if(!activeWorkoutSession)return;
-  const idx=workoutSessions.indexOf(activeWorkoutSession);
-  if(idx<0)workoutSessions.push(activeWorkoutSession);
+  if(!workoutSessions.includes(activeWorkoutSession)){
+    if(!sessionHasData(activeWorkoutSession))return;
+    workoutSessions.push(activeWorkoutSession);
+  }
   S('fl_wkt_sessions',workoutSessions);
 }
 // Discard the active session IF it's still a draft (never committed, no data).
@@ -4149,23 +4209,19 @@ function ensureActiveSession(){
   if(!routine)return null;
   let s=workoutSessions.find(x=>x.date===activeWorkoutDate&&x.dayId===activeWorkoutDayId);
   if(s){activeWorkoutSession=s;return s;}
-  // Build a fresh draft session from the routine template, pre-filling last-
-  // week values. Only committed to workoutSessions once the user actually
-  // logs something — avoids creating phantom empty sessions from chip-tapping.
-  const last=lastSessionFor(activeWorkoutDayId);
+  // Build a fresh draft from the routine template. Do NOT pre-fill weights/
+  // reps from last session — those get shown as ghost placeholders in the
+  // input UI, so the user sees the target without us silently saving it.
   const exercises=routine.exercises.map(ex=>{
-    const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
     const n=Math.max(1,+ex.sets||5);
     const sets=[];
-    for(let i=0;i<n;i++){
-      const pre=lastEx&&lastEx.sets&&lastEx.sets[i];
-      sets.push({weight:pre&&!pre.skipped?+pre.weight||0:0,reps:pre&&!pre.skipped?+pre.reps||0:0,skipped:false});
-    }
+    for(let i=0;i<n;i++)sets.push({weight:0,reps:0,skipped:false});
     return{name:ex.name,type:ex.type,reps:ex.reps,rest:ex.rest,unit:ex.unit||'lbs',pair:ex.pair||'',muscle:ex.muscle||'',sets};
   });
   s={id:Date.now(),date:activeWorkoutDate,dayId:activeWorkoutDayId,dayName:routine.name,exercises,notes:''};
   activeWorkoutSession=s;
-  // NOT pushed to workoutSessions yet — still a draft.
+  // NOT pushed to workoutSessions yet — still a draft. commitActiveSession
+  // will refuse to persist until the user logs at least one real set.
   return s;
 }
 
@@ -4181,12 +4237,89 @@ function renderWorkoutScreen(){
   const next=document.getElementById('w-next-day');
   const today=document.getElementById('w-today-btn');
   const prog=document.getElementById('w-progress-btn');
+  const hist=document.getElementById('w-history-btn');
   if(prev&&!prev._bound){prev._bound=true;prev.addEventListener('click',()=>shiftWorkoutDate(-1));}
   if(next&&!next._bound){next._bound=true;next.addEventListener('click',()=>shiftWorkoutDate(1));}
   if(today&&!today._bound){today._bound=true;today.addEventListener('click',()=>{discardDraftSessionIfEmpty();activeWorkoutDate=new Date().toDateString();activeWorkoutDayId=null;activeWorkoutSession=null;renderWorkoutScreen();});}
   if(prog&&!prog._bound){prog._bound=true;prog.addEventListener('click',openProgressView);}
+  if(hist&&!hist._bound){hist._bound=true;hist.addEventListener('click',openHistoryView);}
   renderWorkoutDayChips();
   renderWorkoutBody();
+}
+
+// ══ WORKOUT HISTORY VIEW ══
+function openHistoryView(){
+  openOverlay('overlay-history');
+  renderHistoryList();
+}
+
+function renderHistoryList(){
+  const el=document.getElementById('history-list');
+  if(!el)return;
+  const list=[...workoutSessions].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!list.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:24px 8px;line-height:1.5">No logged sessions yet.<br>Log a workout and it\'ll appear here.</div>';
+    return;
+  }
+  el.innerHTML=list.map(s=>{
+    const exs=s.exercises||[];
+    const done=exs.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed||+x.weight||+x.reps).length,0);
+    const total=exs.reduce((a,e)=>a+(e.sets||[]).length,0);
+    const volume=exs.reduce((a,e)=>a+(e.sets||[]).reduce((b,x)=>b+(+x.weight||0)*(+x.reps||0),0),0);
+    const d=new Date(s.date);
+    const dateLine=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const volLine=volume?' · '+Math.round(volume).toLocaleString()+' lb·reps':'';
+    const active=s===activeWorkoutSession;
+    return `
+    <div style="display:flex;align-items:stretch;gap:6px;background:var(--s2);border:1px solid ${active?'var(--teal-bright)':'var(--border)'};border-radius:12px;padding:10px 12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.dayName||'Workout'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${dateLine} · ${done}/${total} sets${volLine}</div>
+      </div>
+      <button class="w-hist-edit" data-sid="${s.id}" title="Edit this session" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--border);color:var(--plum);border-radius:8px;padding:0;font-size:15px;cursor:pointer">✎</button>
+      <button class="w-hist-del" data-sid="${s.id}" title="Delete this session" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:0;font-size:14px;cursor:pointer">✕</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.w-hist-edit').forEach(b=>b.addEventListener('click',()=>jumpToHistorySession(+b.dataset.sid)));
+  el.querySelectorAll('.w-hist-del').forEach(b=>b.addEventListener('click',()=>deleteHistorySession(+b.dataset.sid)));
+}
+
+function jumpToHistorySession(sid){
+  const s=workoutSessions.find(x=>x.id===sid);
+  if(!s)return;
+  discardDraftSessionIfEmpty();
+  activeWorkoutDate=s.date;
+  activeWorkoutDayId=s.dayId;
+  activeWorkoutSession=s;
+  expandedExIdx=-1;
+  closeOverlay('overlay-history');
+  renderWorkoutScreen();
+}
+
+function deleteActiveSession(){
+  const s=activeWorkoutSession;
+  if(!s||!workoutSessions.includes(s)){toast('Nothing to delete — this is a preview.');return;}
+  const d=new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(!confirm(`Delete "${s.dayName||'Workout'}" from ${d}? This can't be undone.`))return;
+  workoutSessions=workoutSessions.filter(x=>x!==s);
+  S('fl_wkt_sessions',workoutSessions);
+  activeWorkoutSession=null;
+  activeWorkoutDayId=null;
+  toast('Session deleted');
+  renderWorkoutScreen();
+}
+
+function deleteHistorySession(sid){
+  const s=workoutSessions.find(x=>x.id===sid);
+  if(!s)return;
+  const d=new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(!confirm(`Delete "${s.dayName||'Workout'}" from ${d}? This can't be undone.`))return;
+  workoutSessions=workoutSessions.filter(x=>x.id!==sid);
+  S('fl_wkt_sessions',workoutSessions);
+  if(activeWorkoutSession===s){activeWorkoutSession=null;activeWorkoutDayId=null;}
+  renderHistoryList();
+  renderWorkoutScreen();
+  toast('Deleted');
 }
 
 // ══ WORKOUT PROGRESS VIEW ══
@@ -4360,16 +4493,30 @@ function renderWorkoutBody(){
   if(!s){el.innerHTML='<div class="empty-state">No session.</div>';return;}
 
   const isBlank=s.dayId==='blank'||s.dayId.startsWith('tpl_');
+  const isDraft=!workoutSessions.includes(s);
+  const isPastDate=new Date(activeWorkoutDate).setHours(0,0,0,0)<new Date().setHours(0,0,0,0);
+  // Banner: make it obvious whether the user is previewing (draft), live-
+  // logging today, or editing a saved past session.
+  let banner='';
+  if(isDraft){
+    banner=`<div style="font-size:10px;color:var(--plum);margin-top:6px;font-weight:600;letter-spacing:.02em">👁 Preview — nothing is saved until you log a set. Switch Days freely.</div>`;
+  }else if(isPastDate){
+    banner=`<div style="font-size:11px;color:var(--teal-deep);margin-top:6px;font-weight:700;letter-spacing:.02em">✎ Editing saved session — changes update this past log in place.</div>`;
+  }else{
+    banner=`<div style="font-size:10px;color:var(--lime);margin-top:6px;font-weight:600;letter-spacing:.02em">✓ Saved — changes are auto-logged.</div>`;
+  }
   const exerciseHTML=s.exercises.map((ex,ei)=>renderExerciseCard(ex,ei)).join('');
   el.innerHTML=`
     <div style="margin-top:6px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-soft)">
       <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em">${s.dayName}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">${s.exercises.length} exercise${s.exercises.length===1?'':'s'} · ${s.exercises.reduce((a,e)=>a+(e.sets||[]).length,0)} total sets planned</div>
+      ${banner}
     </div>
     ${exerciseHTML||'<div class="empty-state" style="padding-top:30px"><div class="es-icon">🤸</div><div class="es-txt">No exercises yet — tap "+ Add exercise" below.</div></div>'}
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise to today</button>
+      <button class="btn-full secondary" data-wbtn="add-ex" style="flex:1 1 100%">+ Add exercise${isPastDate?'':' to today'}</button>
       ${isBlank&&s.exercises.length?`<button class="btn-full" data-wbtn="save-tpl" style="flex:1 1 100%;background:linear-gradient(135deg,var(--plum),var(--hotpink));color:#fff">💾 Save today as a template</button>`:''}
+      ${!isDraft?`<button class="btn-full" data-wbtn="delete-session" style="flex:1 1 100%;background:rgba(229,62,84,.08);color:var(--red);border:1px solid var(--red)">🗑 Delete this session</button>`:''}
       <button class="btn-full" data-wbtn="finish" style="flex:1 1 100%;background:var(--g-teal);color:#fff">✓ Finish workout</button>
     </div>
   `;
@@ -4380,6 +4527,7 @@ function renderWorkoutBody(){
       if(kind==='add-ex')openExercisePicker();
       else if(kind==='save-tpl')openSaveTemplate();
       else if(kind==='finish')finishWorkout();
+      else if(kind==='delete-session')deleteActiveSession();
     });
   });
   bindWorkoutInlineInputs();
@@ -4394,19 +4542,23 @@ const PAIR_TINTS={A:'rgba(31,194,192,.08)',B:'rgba(249,72,146,.08)',C:'rgba(255,
 // was trained. Ignores today's draft so "done today" doesn't show on the
 // very session you're currently logging. Used for the "rested Nd" nudge.
 function lastTrainedDaysAgo(exerciseName){
+  const viewDay=new Date(activeWorkoutDate).setHours(0,0,0,0);
   let latest=-Infinity;
   workoutSessions.forEach(s=>{
     if(s===activeWorkoutSession)return;
-    const ts=new Date(s.date).getTime();
+    const ts=new Date(s.date).setHours(0,0,0,0);
     if(!isFinite(ts))return;
+    // Only look at sessions strictly BEFORE the date being viewed. Future
+    // sessions (e.g. viewing April 20 when today is April 24) shouldn't
+    // light up a "Done today" badge.
+    if(ts>=viewDay)return;
     const ex=(s.exercises||[]).find(e=>e.name===exerciseName);
     if(!ex)return;
     const did=(ex.sets||[]).some(x=>x.completed||x.skipped||+x.weight||+x.reps);
     if(did&&ts>latest)latest=ts;
   });
   if(!isFinite(latest))return null;
-  const today=new Date(activeWorkoutDate).setHours(0,0,0,0);
-  return Math.max(0,Math.round((today-new Date(latest).setHours(0,0,0,0))/86400000));
+  return Math.max(0,Math.round((viewDay-latest)/86400000));
 }
 function pairInfo(ex,ei){
   const key=ex.pair||'';
@@ -4438,6 +4590,10 @@ function renderExerciseCard(ex,ei){
   const tightTop=prevEx&&prevEx.pair&&prevEx.pair===ex.pair;
   const marginTop=tightTop?'3px':'10px';
   const expanded=ei===expandedExIdx;
+  // Last session for this routine + matching exercise — used for ghost hints
+  // so the user sees last time's numbers without us silently saving them.
+  const lastS=lastSessionFor(activeWorkoutDayId);
+  const lastEx=lastS&&lastS.exercises.find(e=>e.name===ex.name);
   // Recency nudge — if this exercise was trained within 3 days, muscles are
   // still recovering. Show a subtle warning badge + fade the card a little.
   const daysAgo=isMob?null:lastTrainedDaysAgo(ex.name);
@@ -4453,6 +4609,7 @@ function renderExerciseCard(ex,ei){
       const completed=!!set.completed;
       const filled=!skip&&(completed||w||r);
       let text='·';
+      let isHint=false;
       if(skip)text='—';
       else if(filled){
         if(isMob){
@@ -4466,8 +4623,27 @@ function renderExerciseCard(ex,ei){
         }else{
           text=`${w||0}×${r||0}`;
         }
+      }else if(lastEx&&lastEx.sets&&lastEx.sets[si]){
+        // Ghost hint — show last time's values in muted text so user has a
+        // target. Not saved anywhere; just a visual reference.
+        const lw=+lastEx.sets[si].weight||0,lr=+lastEx.sets[si].reps||0;
+        const lc=!!lastEx.sets[si].completed,ls=!!lastEx.sets[si].skipped;
+        if(!ls&&(lw||lr||lc)){
+          if(isMob&&lc)text='·';
+          else if(isTimed){
+            if(lw&&lr)text=`${lw}×${lr}s`;
+            else if(lr)text=`${lr}s`;
+            else if(lw)text=`${lw}`;
+          }else if(!isMob){
+            text=`${lw||0}×${lr||0}`;
+          }
+          if(text!=='·')isHint=true;
+        }
       }
-      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;background:${filled?'var(--s1)':'transparent'};border:1px solid ${filled?pair.color||badgeColor:'var(--border)'};border-radius:5px;font-size:10px;color:${skip?'var(--muted2)':filled?'var(--text)':'var(--muted2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
+      const cellColor=skip?'var(--muted2)':filled?'var(--text)':isHint?'var(--muted2)':'var(--muted2)';
+      const cellBorder=filled?(pair.color||badgeColor):isHint?'var(--border)':'var(--border)';
+      const cellStyle=isHint?'background:transparent;opacity:.55;font-style:italic':(filled?'background:var(--s1)':'background:transparent');
+      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;${cellStyle};border:1px solid ${cellBorder};border-radius:5px;font-size:10px;color:${cellColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
     }).join('');
     return `
     <div class="w-ex-row" data-ei="${ei}" style="margin-top:${marginTop};background:${pair.tint};border:1px solid var(--border);border-left:5px solid ${pair.key?pair.color:badgeColor};border-radius:10px;padding:8px 10px;cursor:pointer${recentFade}">
@@ -4501,11 +4677,17 @@ function renderExerciseCard(ex,ei){
     }
     const weight=set.weight||'';
     const reps=set.reps||'';
-    const wPlaceholder='lb';
+    // Placeholders show last session's numbers as a target — they're ghosted
+    // by the browser when the input is empty, and disappear once the user
+    // types. Nothing gets saved unless they actually enter a value.
+    const lastSet=lastEx&&lastEx.sets&&lastEx.sets[si];
+    const lastW=lastSet&&!lastSet.skipped?+lastSet.weight||0:0;
+    const lastR=lastSet&&!lastSet.skipped?+lastSet.reps||0:0;
+    const wPlaceholder=lastW?String(lastW):'lb';
     const weightInput=`<input type="number" class="w-set-w" data-ei="${ei}" data-si="${si}" value="${weight}" placeholder="${wPlaceholder}" inputmode="decimal" step="0.5" style="flex:1;min-width:0;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:right;outline:none${skip?';opacity:.4':''}">`;
     const wPlusBtn=`<button class="w-adj" data-ei="${ei}" data-si="${si}" data-delta="2.5" title="Add 2.5 lb" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+2.5</button>`;
     // Reps column: "sec" on timed holds, "reps" otherwise.
-    const repsPlaceholder=isTimed?'sec':'reps';
+    const repsPlaceholder=lastR?String(lastR)+(isTimed?'s':''):(isTimed?'sec':'reps');
     const rPlusBtn=isTimed
       ? `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="15" title="Add 15 sec" style="flex:0 0 38px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+15s</button>`
       : `<button class="w-rep-adj" data-ei="${ei}" data-si="${si}" data-delta="1" title="Add 1 rep" style="flex:0 0 30px;background:var(--s1);border:1px solid var(--teal-bright);border-radius:7px;padding:6px 0;font-size:11px;color:var(--teal-deep);cursor:pointer;font-weight:700">+1</button>`;
@@ -4522,11 +4704,9 @@ function renderExerciseCard(ex,ei){
       <button class="w-set-skip" data-ei="${ei}" data-si="${si}" title="${skip?'Un-skip':'Skip this set'}" style="flex:0 0 28px;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 0;font-size:12px;color:${skip?'var(--red)':'var(--muted)'};cursor:pointer">${skip?'↺':'✕'}</button>
     </div>`;
   }).join('');
-  const last=lastSessionFor(activeWorkoutDayId);
-  const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
   let lastSummary='';
   if(lastEx){
-    const dateStr=new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dateStr=new Date(lastS.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
     if(isMob){
       const doneCount=lastEx.sets.filter(s=>!s.skipped&&(s.completed||s.weight||s.reps)).length;
       if(doneCount)lastSummary=`Last ${dateStr}: ${doneCount} set${doneCount===1?'':'s'} done ✓`;
