@@ -1530,7 +1530,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v78 · 2026-04-24';
+const APP_VERSION='v79 · 2026-04-24';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -4773,10 +4773,36 @@ function renderExerciseCard(ex,ei,locked){
           if(text!=='·')isHint=true;
         }
       }
-      const cellColor=skip?'var(--muted2)':filled?'var(--text)':isHint?'var(--muted2)':'var(--muted2)';
-      const cellBorder=filled?(pair.color||badgeColor):isHint?'var(--border)':'var(--border)';
-      const cellStyle=isHint?'background:transparent;opacity:.55;font-style:italic':(filled?'background:var(--s1)':'background:transparent');
-      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;${cellStyle};border:1px solid ${cellBorder};border-radius:5px;font-size:10px;color:${cellColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${filled?600:400}">${text}</div>`;
+      // Visual distinction:
+      //   filled (logged)  → bold dark text on a colored solid background +
+      //                      colored border, so a confirmed set jumps out.
+      //   hint   (last wk) → italic faded numbers, dashed border — clearly a
+      //                      suggestion, not a saved value.
+      //   empty            → dot, muted, plain border.
+      let cellStyle, cellBorder, cellColor, cellWeight;
+      if(skip){
+        cellStyle='background:transparent';
+        cellBorder=`1px solid var(--border)`;
+        cellColor='var(--muted2)';
+        cellWeight=400;
+      }else if(filled){
+        const accent=pair.color||badgeColor;
+        cellStyle=`background:rgba(31,194,192,.18);box-shadow:inset 0 0 0 1px ${accent}`;
+        cellBorder=`1px solid ${accent}`;
+        cellColor='var(--text)';
+        cellWeight=800;
+      }else if(isHint){
+        cellStyle='background:transparent;opacity:.6;font-style:italic';
+        cellBorder='1px dashed var(--border2,var(--border))';
+        cellColor='var(--muted)';
+        cellWeight=400;
+      }else{
+        cellStyle='background:transparent';
+        cellBorder='1px solid var(--border)';
+        cellColor='var(--muted2)';
+        cellWeight=400;
+      }
+      return `<div style="flex:1;min-width:0;text-align:center;padding:4px 2px;${cellStyle};border:${cellBorder};border-radius:5px;font-size:10px;color:${cellColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${cellWeight}">${text}</div>`;
     }).join('');
     const rowCursor=locked?'default':'pointer';
     const chevron=locked?'':`<span style="color:var(--muted);font-size:10px;flex-shrink:0">▾</span>`;
@@ -4860,7 +4886,21 @@ function renderExerciseCard(ex,ei,locked){
       }
     }
   }
-  // Pair picker row — lets the user reassign pair colour per exercise.
+  // Quick-fill: if last week's session exists, offer a single-tap "Same as
+  // last" button that copies every set's weight/reps into today's blank
+  // sets. Only shows when at least one set is still empty AND there's data
+  // to copy from. Saves the user from typing "100 × 8, 100 × 8, 100 × 8…".
+  const anyEmpty=ex.sets.some(set=>!set.skipped&&!(+set.weight||+set.reps||set.completed));
+  let repeatBtn='';
+  if(lastEx&&anyEmpty){
+    if(isMob){
+      repeatBtn=`<button class="w-ex-repeat" data-ei="${ei}" style="flex:1 1 auto;background:rgba(31,194,192,.12);border:1px solid var(--teal-bright);color:var(--teal-deep);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Mark all done — same as last</button>`;
+    }else{
+      const sample=lastEx.sets.find(s=>!s.skipped&&(+s.weight||+s.reps));
+      const lbl=sample?`${+sample.weight||0}×${+sample.reps||0}`:'last week';
+      repeatBtn=`<button class="w-ex-repeat" data-ei="${ei}" title="Fill every empty set with last week's numbers" style="flex:1 1 auto;background:rgba(31,194,192,.12);border:1px solid var(--teal-bright);color:var(--teal-deep);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Same as last (${lbl})</button>`;
+    }
+  }
   const pairPicker=['A','B','C','D','E','F'].map(k=>{
     const active=k===ex.pair;
     return `<button class="w-ex-pair" data-ei="${ei}" data-pair="${k}" style="flex:0 0 26px;background:${PAIR_COLORS[k]};color:#fff;border:${active?'2px solid var(--text)':'1px solid transparent'};border-radius:6px;padding:3px 0;font-family:'Fraunces',serif;font-size:11px;font-weight:700;cursor:pointer;opacity:${active?1:.65}">${k}</button>`;
@@ -4894,6 +4934,7 @@ function renderExerciseCard(ex,ei,locked){
       ${pairPicker}
       ${clearPairBtn}
     </div>
+    ${repeatBtn?`<div style="display:flex;margin-top:10px">${repeatBtn}</div>`:''}
     <div style="margin-top:10px">${setRows}</div>
     <button class="w-ex-addset" data-ei="${ei}" style="width:100%;margin-top:4px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:6px;border-radius:8px;font-family:inherit">+ another set</button>
   </div>`;
@@ -4928,6 +4969,7 @@ function bindWorkoutInlineInputs(){
   el.querySelectorAll('.w-ex-swap').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();openExercisePicker(+ev.currentTarget.dataset.ei)}));
   el.querySelectorAll('.w-ex-rm').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();removeExerciseFromSession(+ev.currentTarget.dataset.ei)}));
   el.querySelectorAll('.w-ex-addset').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();addSetToExercise(+ev.currentTarget.dataset.ei)}));
+  el.querySelectorAll('.w-ex-repeat').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();repeatLastWeek(+ev.currentTarget.dataset.ei)}));
   el.querySelectorAll('.w-ex-up').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();moveExercise(+ev.currentTarget.dataset.ei,-1)}));
   el.querySelectorAll('.w-ex-down').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();moveExercise(+ev.currentTarget.dataset.ei,1)}));
   el.querySelectorAll('.w-ex-pair').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();setExercisePair(+ev.currentTarget.dataset.ei,ev.currentTarget.dataset.pair)}));
@@ -5016,6 +5058,41 @@ function toggleSetSkipped(ei,si){
   if(set.skipped){set.weight=0;set.reps=0;}
   commitActiveSession();
   renderWorkoutBody();
+}
+
+// Fill every empty set on the given exercise with last session's values
+// (matched by index). Mobility = mark each empty set as completed. Skipped
+// sets are left alone. Already-filled sets are preserved so we never
+// overwrite real data.
+function repeatLastWeek(ei){
+  if(!activeWorkoutSession)return;
+  const ex=activeWorkoutSession.exercises[ei];if(!ex)return;
+  const last=lastSessionFor(activeWorkoutDayId);
+  const lastEx=last&&last.exercises.find(e=>e.name===ex.name);
+  if(!lastEx){toast('No previous session to copy from');return;}
+  const isMob=ex.type==='mobility';
+  let filled=0;
+  ex.sets.forEach((set,i)=>{
+    if(set.skipped)return;
+    const hasData=set.completed||+set.weight||+set.reps;
+    if(hasData)return;
+    if(isMob){
+      const lc=lastEx.sets[i]&&lastEx.sets[i].completed;
+      if(lc){set.completed=true;filled++;}
+    }else{
+      const lset=lastEx.sets[i];
+      if(lset&&!lset.skipped&&(+lset.weight||+lset.reps)){
+        set.weight=+lset.weight||0;
+        set.reps=+lset.reps||0;
+        set.skipped=false;
+        filled++;
+      }
+    }
+  });
+  if(!filled){toast('All sets already have data');return;}
+  commitActiveSession();
+  renderWorkoutBody();
+  toast(`Filled ${filled} set${filled===1?'':'s'} ✓`);
 }
 
 function addSetToExercise(ei){
