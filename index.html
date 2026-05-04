@@ -457,10 +457,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
     <div class="coach-txt" id="coach-txt">Log your first meal and I'll guide you through the day.</div>
   </div>
-  <!-- DAILY NOTES -->
-  <div class="notes-card">
-    <textarea class="notes-ta" id="daily-notes" placeholder="Notes for today..." oninput="saveNotes()"></textarea>
-  </div>
   <div class="log-input-section">
     <div class="input-lbl">Log Food</div>
     <div class="scanner-wrap" id="scan-wrap">
@@ -554,6 +550,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
+  <!-- DAILY NOTES -->
+  <div class="notes-card">
+    <textarea class="notes-ta" id="daily-notes" placeholder="Notes for today..." oninput="saveNotes()"></textarea>
+  </div>
 </div>
 
 <!-- WEEK -->
@@ -1066,10 +1066,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div id="pastday-summary" style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap"></div>
     <div id="pastday-deficit" style="font-size:12px;color:var(--muted);margin-bottom:12px;padding:8px 12px;background:var(--s1);border:1px solid var(--border);border-radius:10px;line-height:1.6"></div>
     <div class="field-lbl" style="display:flex;justify-content:space-between;align-items:center"><span>🔥 Calories Burned (Garmin total)</span><span style="font-size:10px;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">leave blank = use TDEE</span></div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
+    <div style="display:flex;gap:8px;margin-bottom:10px">
       <input type="number" id="pastday-burn" placeholder="e.g. 2172" style="flex:1;background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--text);outline:none">
       <button class="btn-log" onclick="savePastDayBurn()" style="white-space:nowrap">Save</button>
     </div>
+    <label id="pastday-fasted-row" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 12px;background:var(--s1);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:12px;color:var(--text-soft)">
+      <input type="checkbox" id="pastday-fasted" onchange="togglePastDayFasted()" style="width:18px;height:18px;flex-shrink:0;cursor:pointer">
+      <span><b>Mark as fasted</b> — only check if you really ate 0 cal. Otherwise the day stays "untracked" and isn't counted toward your weekly deficit.</span>
+    </label>
     <!-- Log input for past day -->
     <div class="field-lbl">Add Food to This Day</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -1536,7 +1540,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v82 · 2026-04-28';
+const APP_VERSION='v83 · 2026-04-28';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -2621,7 +2625,22 @@ function renderRecipeFilterChips(){
   el.innerHTML=chips;
 }
 
-function setRecipeFilter(f){recipeFilter=f;renderRecipeFilterChips();renderRecipes()}
+function setRecipeFilter(f){
+  recipeFilter=f;
+  // If we've drilled into a course/category tile, the filter chip below
+  // should also re-target the drill-down — otherwise renderRecipes ignores
+  // the chip because recipeDrilldown.key takes precedence over recipeFilter.
+  if(recipeDrilldown){
+    if(f==='all'){
+      recipeDrilldown={...recipeDrilldown,key:'all',label:'All'};
+    }else{
+      const label=recipeDrilldown.type==='course'?(COURSE_LABELS[f]||f):f.charAt(0).toUpperCase()+f.slice(1);
+      recipeDrilldown={...recipeDrilldown,key:f,label};
+    }
+  }
+  renderRecipeFilterChips();
+  renderRecipes();
+}
 
 function getFilteredRecipes(){
   let rs=[...recipes];
@@ -2756,7 +2775,9 @@ function bindRecipeInteractions(){
 
 function drillRecipes(type,key,label){
   recipeDrilldown={type,key,label};
-  recipeFilter='all';
+  // Sync the chip filter to the drill-down key so the active chip lights up
+  // and the user can switch between sibling categories without going back.
+  recipeFilter=key;
   const chips=document.getElementById('recipe-filter-chips');
   if(chips)chips.style.display='flex';
   renderRecipes();
@@ -2851,15 +2872,31 @@ function saveTweakedRecipe(){
 // Burn falls back to maintenance TDEE when the user hasn't entered a per-day
 // burn value. So eating 1600 against a 1900 TDEE = 300 deficit, not zero;
 // and on workout days the Garmin total burn (e.g. 2350) is used directly.
-function dayDeficit(dayKey){
+//
+// Past days with NO entries logged are treated as "untracked" (assumed
+// maintenance → deficit contribution of 0) instead of "you ate 0 cal", so
+// lazy weekend skips don't fake a 1900-cal/day deficit. Users can flip a
+// day to "fasted" via the past-day modal to count it as a real 0-cal day.
+function isDayFasted(dayKey){return !!J('fl_fasted_'+dayKey,false);}
+function setDayFasted(dayKey,v){S('fl_fasted_'+dayKey,!!v);}
+function dayStatus(dayKey,isToday){
+  const entries=J('fl_e_'+dayKey,[]);
+  if(entries.length>0)return 'logged';
+  if(isDayFasted(dayKey))return 'fasted';
+  if(isToday)return 'logged';
+  return 'untracked';
+}
+function dayDeficit(dayKey,isToday){
+  if(dayStatus(dayKey,isToday)==='untracked')return 0;
   const eaten=totals(J('fl_e_'+dayKey,[])).cal||0;
   const burn=+J('fl_burn_'+dayKey,0)||+goals.tdee||0;
   return burn-eaten;
 }
 function getWeekDeficit(){
   const start=new Date();start.setDate(start.getDate()-start.getDay());start.setHours(0,0,0,0);
+  const todayKey=new Date().toDateString();
   let total=0;
-  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(d.getDate()+i);if(d>new Date())break;total+=dayDeficit(d.toDateString());}
+  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(d.getDate()+i);if(d>new Date())break;const dKey=d.toDateString();total+=dayDeficit(dKey,dKey===todayKey);}
   return total;
 }
 
@@ -2894,9 +2931,12 @@ function buildWeek(){
   // Eaten cell shows "1595 / 1600" so the user can still see their daily
   // calorie goal alongside what they actually ate. Burn shows Garmin if set
   // (with a 🔥 prefix so it's obvious it's a logged value), maintenance
-  // otherwise.
+  // otherwise. Past days with no entries are "Untracked" — they don't
+  // contribute to the weekly deficit (we assume they ate at maintenance,
+  // not 0). User can mark a day as fasted in the past-day modal to count
+  // it as a true 0-cal day.
   let rows=`<div class="ws-header"><div>Day</div><div>Eaten / Goal</div><div>Burn</div><div>Deficit</div></div>`;
-  let weekCal=0,weekDef=0,weekProt=0,weekBurn=0,days2=0;
+  let weekCal=0,weekDef=0,weekProt=0,weekBurn=0,days2=0,untrackedCount=0;
   const dailyGoal=+goals.cal||0;
   for(let i=0;i<numDays;i++){
     const d=new Date(start);d.setDate(d.getDate()+i);
@@ -2906,17 +2946,26 @@ function buildWeek(){
     const burnStored=+J('fl_burn_'+dKey,0)||0;
     const dayBurn=burnStored||+goals.tdee||0;
     if(future&&!dayE.length){rows+=`<div class="ws-row"><div class="ws-day">${days[i]}</div><div class="ws-cal" style="color:var(--muted2)">— / ${dailyGoal}</div><div class="ws-cal" style="color:var(--muted2)">—</div><div class="ws-def neutral">—</div></div>`;continue}
+    const status=dayStatus(dKey,isToday);
+    if(status==='untracked'){
+      untrackedCount++;
+      rows+=`<div class="ws-row" onclick="openPastDay('${dKey}')" style="cursor:pointer;opacity:.65"><div class="ws-day">${days[i]}</div><div class="ws-cal" style="color:var(--muted2);font-style:italic">Untracked</div><div class="ws-cal" style="color:var(--muted2)">—</div><div class="ws-def neutral" style="font-size:11px">skipped</div></div>`;
+      continue;
+    }
     // Deficit = burn (Garmin if entered, else maintenance) − eaten.
     const def=dayBurn-t.cal;
     weekCal+=t.cal;weekDef+=def;weekProt+=t.prot;weekBurn+=dayBurn;
-    if(t.cal>0||isToday)days2++;
-    const eatenCell=`<div class="ws-cal"><span style="color:var(--text);font-weight:600">${Math.round(t.cal)}</span><span style="color:var(--muted2)"> / ${dailyGoal}</span></div>`;
+    if(t.cal>0||isToday||status==='fasted')days2++;
+    const fastedTag=status==='fasted'?` <span style="color:var(--plum);font-size:9px;font-weight:700;letter-spacing:.06em">FASTED</span>`:'';
+    const eatenCell=`<div class="ws-cal"><span style="color:var(--text);font-weight:600">${Math.round(t.cal)}</span><span style="color:var(--muted2)"> / ${dailyGoal}</span>${fastedTag}</div>`;
     const burnCell=`<div class="ws-cal">${burnStored?'🔥 ':''}${Math.round(dayBurn)}</div>`;
-    rows+=`<div class="ws-row${isToday?' today':''}" onclick="openPastDay('${dKey}')" style="cursor:pointer"><div class="ws-day${isToday?' today-lbl':''}">${days[i]}</div>${eatenCell}${burnCell}<div class="ws-def ${def>50?'pos':def<-50?'neg':'neutral'}">${t.cal>0||isToday?(def>=0?'+':'')+Math.round(def):'—'}</div></div>`;
+    rows+=`<div class="ws-row${isToday?' today':''}" onclick="openPastDay('${dKey}')" style="cursor:pointer"><div class="ws-day${isToday?' today-lbl':''}">${days[i]}</div>${eatenCell}${burnCell}<div class="ws-def ${def>50?'pos':def<-50?'neg':'neutral'}">${t.cal>0||isToday||status==='fasted'?(def>=0?'+':'')+Math.round(def):'—'}</div></div>`;
   }
   document.getElementById('week-table').innerHTML=rows;
   const lb=(weekDef/3500).toFixed(2);
-  document.getElementById('week-totals-card').innerHTML=`<div class="wt-row"><div class="wt-label">Weekly Deficit</div><div class="wt-val ${weekDef>0?'good':'over'}">${weekDef>=0?'+':''}${Math.round(weekDef)} kcal</div></div><div class="wt-row"><div class="wt-label">Fat Loss Pace</div><div class="wt-val ${+lb>0?'good':'over'}">${lb} lbs this week</div></div><div class="wt-row"><div class="wt-label">Avg Daily Calories</div><div class="wt-val">${days2?Math.round(weekCal/days2):'—'} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Burn</div><div class="wt-val" style="color:var(--orange)">${days2?Math.round(weekBurn/days2):0} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Protein</div><div class="wt-val" style="color:var(--blue)">${days2?Math.round(weekProt/days2):0}g</div></div><div class="wt-note">Deficit = burn − eaten. Burn uses your 🔥 Calories Burned input if set, otherwise your maintenance TDEE (Goals tab). ~3,500 kcal deficit ≈ 1 lb fat.</div>`;
+  const untrackedNote=untrackedCount?`<div class="wt-row" style="color:var(--muted2)"><div class="wt-label">Untracked days</div><div class="wt-val" style="color:var(--muted)">${untrackedCount} skipped</div></div>`:'';
+  const noteExtra=untrackedCount?` <b>${untrackedCount} day${untrackedCount===1?'':'s'} not counted</b> — open the day to mark it fasted if you really ate 0.`:'';
+  document.getElementById('week-totals-card').innerHTML=`<div class="wt-row"><div class="wt-label">Weekly Deficit</div><div class="wt-val ${weekDef>0?'good':'over'}">${weekDef>=0?'+':''}${Math.round(weekDef)} kcal</div></div><div class="wt-row"><div class="wt-label">Fat Loss Pace</div><div class="wt-val ${+lb>0?'good':'over'}">${lb} lbs this week</div></div><div class="wt-row"><div class="wt-label">Avg Daily Calories</div><div class="wt-val">${days2?Math.round(weekCal/days2):'—'} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Burn</div><div class="wt-val" style="color:var(--orange)">${days2?Math.round(weekBurn/days2):0} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Protein</div><div class="wt-val" style="color:var(--blue)">${days2?Math.round(weekProt/days2):0}g</div></div>${untrackedNote}<div class="wt-note">Deficit = burn − eaten. Burn uses your 🔥 Calories Burned input if set, otherwise your maintenance TDEE (Goals tab). Past days with no log are "untracked" and don't count toward the deficit (we assume maintenance, not 0). ~3,500 kcal deficit ≈ 1 lb fat.${noteExtra}</div>`;
 }
 
 // ══ CLAUDE API ══
@@ -3437,8 +3486,21 @@ function openPastDay(dateStr){
   const storedBurn=+J('fl_burn_'+dateStr,0)||0;
   const burnInp=document.getElementById('pastday-burn');
   if(burnInp)burnInp.value=storedBurn||'';
+  // Pre-fill the fasted checkbox.
+  const fastedCb=document.getElementById('pastday-fasted');
+  if(fastedCb)fastedCb.checked=isDayFasted(dateStr);
   renderPastDayEntries();
   openOverlay('overlay-pastday');
+}
+
+function togglePastDayFasted(){
+  if(!activeDayKey)return;
+  const checked=document.getElementById('pastday-fasted').checked;
+  setDayFasted(activeDayKey,checked);
+  renderPastDayEntries();
+  buildWeek();
+  if(activeDayKey===new Date().toDateString())render();
+  toast(checked?'Marked as fasted ✓':'Fasted flag removed');
 }
 
 function savePastDayBurn(){
@@ -3470,18 +3532,33 @@ function renderPastDayEntries(){
     <span style="font-size:12px;color:var(--yellow)"><b>${Math.round(t.carbs*10)/10}g</b> C</span>
     <span style="font-size:12px;color:var(--teal)"><b>${Math.round(t.fat*10)/10}g</b> F</span>
     <span style="font-size:12px;color:var(--muted)">${dayEntries.length} items</span>`;
-  // Goal vs eaten + real deficit (burn − eaten) banner.
+  // Goal vs eaten + real deficit (burn − eaten) banner — adapts to the
+  // day's status (logged / fasted / untracked).
   const goal=+goals.cal||0;
   const burnStored=+J('fl_burn_'+activeDayKey,0)||0;
   const burn=burnStored||+goals.tdee||0;
   const eaten=Math.round(t.cal);
-  const def=burn-eaten;
-  const burnSrc=burnStored?`Garmin (${burnStored})`:`maintenance (${burn})`;
-  const defColor=def>50?'var(--lime)':def<-50?'var(--red)':'var(--muted)';
-  const goalDelta=goal-eaten;
-  const goalLine=goal?`<div><b>Goal:</b> ${goal} kcal · <span style="color:${goalDelta>=0?'var(--lime)':'var(--red)'}">${goalDelta>=0?'+':''}${Math.round(goalDelta)} ${goalDelta>=0?'under':'over'}</span></div>`:'';
+  const isToday=activeDayKey===new Date().toDateString();
+  const status=dayStatus(activeDayKey,isToday);
   const defEl=document.getElementById('pastday-deficit');
-  if(defEl)defEl.innerHTML=`${goalLine}<div><b>Deficit:</b> <span style="color:${defColor};font-weight:700">${def>=0?'+':''}${Math.round(def)} kcal</span> &nbsp;·&nbsp; burn − eaten · ${burnSrc}</div>`;
+  if(defEl){
+    if(status==='untracked'){
+      defEl.innerHTML=`<div style="color:var(--muted)"><b>Untracked day</b> — no entries logged. Assumed maintenance, so this day doesn't count toward your weekly deficit.</div><div style="font-size:11px;color:var(--muted2);margin-top:4px">Add a meal below, or check "Mark as fasted" if you really ate 0.</div>`;
+    }else{
+      const def=burn-eaten;
+      const burnSrc=burnStored?`Garmin (${burnStored})`:`maintenance (${burn})`;
+      const defColor=def>50?'var(--lime)':def<-50?'var(--red)':'var(--muted)';
+      const goalDelta=goal-eaten;
+      const goalLine=goal?`<div><b>Goal:</b> ${goal} kcal · <span style="color:${goalDelta>=0?'var(--lime)':'var(--red)'}">${goalDelta>=0?'+':''}${Math.round(goalDelta)} ${goalDelta>=0?'under':'over'}</span></div>`:'';
+      const fastedTag=status==='fasted'?` <span style="color:var(--plum);font-weight:700;font-size:10px;letter-spacing:.06em">FASTED</span>`:'';
+      defEl.innerHTML=`${goalLine}<div><b>Deficit:</b> <span style="color:${defColor};font-weight:700">${def>=0?'+':''}${Math.round(def)} kcal</span>${fastedTag} &nbsp;·&nbsp; burn − eaten · ${burnSrc}</div>`;
+    }
+  }
+  // Hide the fasted toggle on today (it's actively logging) and also hide
+  // it on already-logged past days — only meaningful when there are no
+  // entries.
+  const fastedRow=document.getElementById('pastday-fasted-row');
+  if(fastedRow)fastedRow.style.display=(dayEntries.length===0&&!isToday)?'flex':'none';
   if(!dayEntries.length){
     document.getElementById('pastday-entries').innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">Nothing logged this day. Add something above.</div>';
     return;
