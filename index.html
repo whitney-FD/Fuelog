@@ -450,6 +450,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 
   <!-- MICRO ROW: dynamic — all tracked extras -->
   <div class="micro-row" id="micro-row"></div>
+  <div class="coach-card">
+    <div class="coach-lbl">
+      🥑 Coach
+      <a class="coach-open-btn" href="https://claude.ai/chat/10a6caeb-0cf3-4c56-9668-fd1b3ea4706f" target="_blank">Open Coach →</a>
+    </div>
+    <div class="coach-txt" id="coach-txt">Log your first meal and I'll guide you through the day.</div>
+  </div>
+  <!-- DAILY NOTES -->
+  <div class="notes-card">
+    <textarea class="notes-ta" id="daily-notes" placeholder="Notes for today..." oninput="saveNotes()"></textarea>
+  </div>
   <div class="log-input-section">
     <div class="input-lbl">Log Food</div>
     <div class="scanner-wrap" id="scan-wrap">
@@ -543,17 +554,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <div class="coach-card">
-    <div class="coach-lbl">
-      🥑 Coach
-      <a class="coach-open-btn" href="https://claude.ai/chat/10a6caeb-0cf3-4c56-9668-fd1b3ea4706f" target="_blank">Open Coach →</a>
-    </div>
-    <div class="coach-txt" id="coach-txt">Log your first meal and I'll guide you through the day.</div>
-  </div>
-  <!-- DAILY NOTES -->
-  <div class="notes-card">
-    <textarea class="notes-ta" id="daily-notes" placeholder="Notes for today..." oninput="saveNotes()"></textarea>
-  </div>
 </div>
 
 <!-- WEEK -->
@@ -1536,7 +1536,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v81 · 2026-04-28';
+const APP_VERSION='v82 · 2026-04-28';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
