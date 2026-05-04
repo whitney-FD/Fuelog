@@ -450,6 +450,39 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 
   <!-- MICRO ROW: dynamic — all tracked extras -->
   <div class="micro-row" id="micro-row"></div>
+  <div class="log-input-section">
+    <div class="input-lbl">Log Food</div>
+    <div class="scanner-wrap" id="scan-wrap">
+      <div class="scanner-inner">
+        <video id="scan-video" autoplay playsinline muted></video>
+        <div class="scan-frame"></div>
+      </div>
+      <div class="scan-status" id="scan-status">Point camera at barcode</div>
+      <div style="display:flex;gap:6px;padding:6px 10px 10px">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="scan-manual" placeholder="Or type the code (8–14 digits)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="flex:1;background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none">
+        <button class="btn-sm" onclick="scanManualSubmit()" style="flex-shrink:0">Look up</button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input type="text" class="food-ta" id="food-ta" placeholder="Type to search your foods or describe a meal..." oninput="onFoodInput(event)" onkeydown="handleLogKey(event)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
+      <div class="search-results" id="search-results"></div>
+    </div>
+    <div class="input-row">
+      <button class="icon-btn" onclick="toggleScan()" title="Scan barcode">📷</button>
+      <button class="btn-log" id="log-btn" onclick="logFoodFromInput()">LOG</button>
+    </div>
+    <div class="sub-actions">
+      <button class="btn-sm" onclick="openQuickNav('recipes')">+ Recipe</button>
+      <button class="btn-sm" onclick="openSavedMeals()">+ Saved</button>
+      <button class="btn-sm" onclick="copyYesterdayMeals()">📋 Copy Yesterday</button>
+    </div>
+  </div>
+  <div class="slot-row" id="slot-row"></div>
+  <div class="section-hdr">
+    <span id="slot-label-hdr">All Meals</span>
+    <span id="today-total-cal" style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0"></span>
+  </div>
+  <div id="entries-list"></div>
   <div class="deficit-card">
     <div class="dc-row">
       <div>
@@ -517,39 +550,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     </div>
     <div class="coach-txt" id="coach-txt">Log your first meal and I'll guide you through the day.</div>
   </div>
-  <div class="log-input-section">
-    <div class="input-lbl">Log Food</div>
-    <div class="scanner-wrap" id="scan-wrap">
-      <div class="scanner-inner">
-        <video id="scan-video" autoplay playsinline muted></video>
-        <div class="scan-frame"></div>
-      </div>
-      <div class="scan-status" id="scan-status">Point camera at barcode</div>
-      <div style="display:flex;gap:6px;padding:6px 10px 10px">
-        <input type="text" inputmode="numeric" pattern="[0-9]*" id="scan-manual" placeholder="Or type the code (8–14 digits)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="flex:1;background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none">
-        <button class="btn-sm" onclick="scanManualSubmit()" style="flex-shrink:0">Look up</button>
-      </div>
-    </div>
-    <div class="search-wrap">
-      <input type="text" class="food-ta" id="food-ta" placeholder="Type to search your foods or describe a meal..." oninput="onFoodInput(event)" onkeydown="handleLogKey(event)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
-      <div class="search-results" id="search-results"></div>
-    </div>
-    <div class="input-row">
-      <button class="icon-btn" onclick="toggleScan()" title="Scan barcode">📷</button>
-      <button class="btn-log" id="log-btn" onclick="logFoodFromInput()">LOG</button>
-    </div>
-    <div class="sub-actions">
-      <button class="btn-sm" onclick="openQuickNav('recipes')">+ Recipe</button>
-      <button class="btn-sm" onclick="openSavedMeals()">+ Saved</button>
-      <button class="btn-sm" onclick="copyYesterdayMeals()">📋 Copy Yesterday</button>
-    </div>
-  </div>
-  <div class="slot-row" id="slot-row"></div>
-  <div class="section-hdr">
-    <span id="slot-label-hdr">All Meals</span>
-    <span id="today-total-cal" style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0"></span>
-  </div>
-  <div id="entries-list"></div>
   <!-- DAILY NOTES -->
   <div class="notes-card">
     <textarea class="notes-ta" id="daily-notes" placeholder="Notes for today..." oninput="saveNotes()"></textarea>
@@ -1530,7 +1530,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v79 · 2026-04-24';
+const APP_VERSION='v80 · 2026-04-28';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -2141,11 +2141,17 @@ function render(){
 
   // ── Micro row — dynamic ──
   renderMicroRow(t,g);
-  const def=g.cal-t.cal;const tdeeD=g.tdee-t.cal;
+  // "Today's Deficit" reflects real burn vs eaten. Burn = the value typed in
+  // the 🔥 Calories Burned input if set, otherwise the user's maintenance TDEE.
+  const todayBurn=+burnKcal||+g.tdee||0;
+  const realDef=todayBurn-t.cal;
   const dcT=document.getElementById('dc-today');
-  dcT.textContent=(def>=0?'+':'')+Math.round(def)+' kcal';
-  dcT.className='dc-val '+(def>0?'good':def>-200?'warn':'over');
-  document.getElementById('dc-pace-today').innerHTML=tdeeD>0?`<b>${Math.round(tdeeD)} kcal</b> below maintenance`:`<b>${Math.abs(Math.round(tdeeD))} kcal</b> above maintenance`;
+  dcT.textContent=(realDef>=0?'+':'')+Math.round(realDef)+' kcal';
+  dcT.className='dc-val '+(realDef>0?'good':realDef>-200?'warn':'over');
+  const burnSrc=+burnKcal?'today\'s burn':'maintenance';
+  document.getElementById('dc-pace-today').innerHTML=realDef>0
+    ?`<b>${Math.round(realDef)} kcal</b> deficit vs ${burnSrc} (${Math.round(todayBurn)})`
+    :`<b>${Math.abs(Math.round(realDef))} kcal</b> over ${burnSrc} (${Math.round(todayBurn)})`;
   const wd=getWeekDeficit();
   const dcW=document.getElementById('dc-week');
   dcW.textContent=(wd>=0?'+':'')+Math.round(wd)+' kcal';
@@ -2835,10 +2841,19 @@ function saveTweakedRecipe(){
 }
 
 // ══ WEEK ══
+// Real deficit math: each day's deficit = (calories burned that day) − eaten.
+// Burn falls back to maintenance TDEE when the user hasn't entered a per-day
+// burn value. So eating 1600 against a 1900 TDEE = 300 deficit, not zero;
+// and on workout days the Garmin total burn (e.g. 2350) is used directly.
+function dayDeficit(dayKey){
+  const eaten=totals(J('fl_e_'+dayKey,[])).cal||0;
+  const burn=+J('fl_burn_'+dayKey,0)||+goals.tdee||0;
+  return burn-eaten;
+}
 function getWeekDeficit(){
   const start=new Date();start.setDate(start.getDate()-start.getDay());start.setHours(0,0,0,0);
   let total=0;
-  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(d.getDate()+i);if(d>new Date())break;total+=goals.cal-totals(J('fl_e_'+d.toDateString(),[])).cal;}
+  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(d.getDate()+i);if(d>new Date())break;total+=dayDeficit(d.toDateString());}
   return total;
 }
 
@@ -2870,19 +2885,24 @@ function buildWeek(){
     const end=new Date(start);end.setDate(end.getDate()+6);
     document.getElementById('week-range-sub').textContent=start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   }
-  let rows=`<div class="ws-header"><div>Day</div><div>Eaten</div><div>Goal</div><div>Deficit</div></div>`;
-  let weekCal=0,weekDef=0,weekProt=0,days2=0;
+  let rows=`<div class="ws-header"><div>Day</div><div>Eaten</div><div>Burn</div><div>Deficit</div></div>`;
+  let weekCal=0,weekDef=0,weekProt=0,weekBurn=0,days2=0;
   for(let i=0;i<numDays;i++){
     const d=new Date(start);d.setDate(d.getDate()+i);
-    const future=d>new Date();const isToday=d.toDateString()===today;
-    const dayE=J('fl_e_'+d.toDateString(),[]);const t=totals(dayE);
-    if(future&&!dayE.length){rows+=`<div class="ws-row"><div class="ws-day">${days[i]}</div><div class="ws-cal" style="color:var(--muted2)">—</div><div class="ws-cal">${goals.cal}</div><div class="ws-def neutral">—</div></div>`;continue}
-    const def=goals.cal-t.cal;weekCal+=t.cal;weekDef+=def;weekProt+=t.prot;if(t.cal>0||isToday)days2++;
-    rows+=`<div class="ws-row${isToday?' today':''}" onclick="openPastDay('${d.toDateString()}')" style="cursor:pointer"><div class="ws-day${isToday?' today-lbl':''}">${days[i]}</div><div class="ws-cal">${Math.round(t.cal)}</div><div class="ws-cal">${goals.cal}</div><div class="ws-def ${def>50?'pos':def<-50?'neg':'neutral'}">${t.cal>0||isToday?(def>=0?'+':'')+Math.round(def):'—'}</div></div>`;
+    const dKey=d.toDateString();
+    const future=d>new Date();const isToday=dKey===today;
+    const dayE=J('fl_e_'+dKey,[]);const t=totals(dayE);
+    const dayBurn=+J('fl_burn_'+dKey,0)||+goals.tdee||0;
+    if(future&&!dayE.length){rows+=`<div class="ws-row"><div class="ws-day">${days[i]}</div><div class="ws-cal" style="color:var(--muted2)">—</div><div class="ws-cal" style="color:var(--muted2)">—</div><div class="ws-def neutral">—</div></div>`;continue}
+    // Deficit = burn (Garmin if entered, else maintenance) − eaten.
+    const def=dayBurn-t.cal;
+    weekCal+=t.cal;weekDef+=def;weekProt+=t.prot;weekBurn+=dayBurn;
+    if(t.cal>0||isToday)days2++;
+    rows+=`<div class="ws-row${isToday?' today':''}" onclick="openPastDay('${dKey}')" style="cursor:pointer"><div class="ws-day${isToday?' today-lbl':''}">${days[i]}</div><div class="ws-cal">${Math.round(t.cal)}</div><div class="ws-cal">${Math.round(dayBurn)}</div><div class="ws-def ${def>50?'pos':def<-50?'neg':'neutral'}">${t.cal>0||isToday?(def>=0?'+':'')+Math.round(def):'—'}</div></div>`;
   }
   document.getElementById('week-table').innerHTML=rows;
   const lb=(weekDef/3500).toFixed(2);
-  document.getElementById('week-totals-card').innerHTML=`<div class="wt-row"><div class="wt-label">Weekly Deficit</div><div class="wt-val ${weekDef>0?'good':'over'}">${weekDef>=0?'+':''}${Math.round(weekDef)} kcal</div></div><div class="wt-row"><div class="wt-label">Fat Loss Pace</div><div class="wt-val ${+lb>0?'good':'over'}">${lb} lbs this week</div></div><div class="wt-row"><div class="wt-label">Avg Daily Calories</div><div class="wt-val">${days2?Math.round(weekCal/days2):'—'} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Protein</div><div class="wt-val" style="color:var(--blue)">${days2?Math.round(weekProt/days2):0}g</div></div><div class="wt-note">Green = deficit (banking calories). Red = surplus. ~3,500 kcal deficit ≈ 1 lb fat.</div>`;
+  document.getElementById('week-totals-card').innerHTML=`<div class="wt-row"><div class="wt-label">Weekly Deficit</div><div class="wt-val ${weekDef>0?'good':'over'}">${weekDef>=0?'+':''}${Math.round(weekDef)} kcal</div></div><div class="wt-row"><div class="wt-label">Fat Loss Pace</div><div class="wt-val ${+lb>0?'good':'over'}">${lb} lbs this week</div></div><div class="wt-row"><div class="wt-label">Avg Daily Calories</div><div class="wt-val">${days2?Math.round(weekCal/days2):'—'} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Burn</div><div class="wt-val" style="color:var(--orange)">${days2?Math.round(weekBurn/days2):0} kcal</div></div><div class="wt-row"><div class="wt-label">Avg Daily Protein</div><div class="wt-val" style="color:var(--blue)">${days2?Math.round(weekProt/days2):0}g</div></div><div class="wt-note">Deficit = burn − eaten. Burn uses your 🔥 Calories Burned input if set, otherwise your maintenance TDEE (Goals tab). ~3,500 kcal deficit ≈ 1 lb fat.</div>`;
 }
 
 // ══ CLAUDE API ══
