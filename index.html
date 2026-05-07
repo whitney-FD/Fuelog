@@ -1106,7 +1106,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title">Bulk Import Recipes</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5">Paste a JSON array of recipes from your meal prep chat. Duplicates (by name) are skipped automatically.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5">Paste a JSON array of recipes from your meal prep chat. Duplicates are matched by name (case-insensitive).</div>
      <div style="display:flex;gap:8px;margin-bottom:8px">
        <label for="bulk-file-input" class="btn-sm" style="flex:1;padding:9px;border-radius:9px;font-size:12px;text-align:center;cursor:pointer;display:block">📁 Upload JSON File</label>
        <input type="file" id="bulk-file-input" accept=".json,.txt,text/plain,application/json" style="display:none" onchange="loadBulkFile(this)">
@@ -1118,6 +1118,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       style="min-height:200px;font-size:12px"></textarea>
     <div id="bulk-char-count" style="font-size:11px;color:var(--muted);text-align:right;margin:-4px 0 8px">0 chars pasted</div>
+    <div class="field-lbl" style="margin-top:4px">If a recipe with the same name already exists</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <label style="flex:1 1 30%;display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--s1);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px"><input type="radio" name="bulk-dup-mode" value="skip" checked style="cursor:pointer"> Skip</label>
+      <label style="flex:1 1 30%;display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--s1);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px"><input type="radio" name="bulk-dup-mode" value="update" style="cursor:pointer"> Update</label>
+      <label style="flex:1 1 30%;display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--s1);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px"><input type="radio" name="bulk-dup-mode" value="ask" style="cursor:pointer"> Ask each</label>
+    </div>
     <div id="bulk-result" style="font-size:12px;color:var(--lime);margin-bottom:10px;min-height:16px"></div>
     <button class="btn-full" onclick="doBulkImport()">Import Recipes</button>
     <button class="btn-full secondary" onclick="closeOverlay('overlay-bulk')">Cancel</button>
@@ -1540,7 +1546,7 @@ function J(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v!=null?v
 function S(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
 // ══ SERVICE WORKER ══
-const APP_VERSION='v83 · 2026-04-28';
+const APP_VERSION='v84 · 2026-04-28';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Fuelog/sw.js').then(reg=>{
     swReg=reg;
@@ -3389,15 +3395,29 @@ function doBulkImport(){
     let arr=JSON.parse(raw);
     if(!Array.isArray(arr))arr=[arr];
     const toArr=v=>Array.isArray(v)?v:(v==null||v==='')?[]:(typeof v==='string'?v.split(/[,;]/):[v]);
-    const existingNames=new Set(recipes.filter(r=>r&&typeof r.name==='string').map(r=>r.name.toLowerCase()));
-    let added=0,skipped=0,errored=0;
+    // Map name (lowercased) → existing recipe so we can find + update on
+    // duplicate. Set is no longer enough.
+    const byName={};
+    recipes.forEach(r=>{if(r&&typeof r.name==='string')byName[r.name.toLowerCase()]=r;});
+    const dupModeEl=document.querySelector('input[name="bulk-dup-mode"]:checked');
+    const dupMode=dupModeEl?dupModeEl.value:'skip';
+    let added=0,updated=0,skipped=0,errored=0;
     const errMsgs=[];
     arr.forEach((r,i)=>{
       try{
         if(!r||typeof r!=='object'){skipped++;return;}
         const rname=typeof r.name==='string'?r.name:(r.name!=null?String(r.name):'');
         if(!rname){skipped++;return;}
-        if(existingNames.has(rname.toLowerCase())){skipped++;return;}
+        const existing=byName[rname.toLowerCase()];
+        let mode='add';
+        if(existing){
+          if(dupMode==='skip'){skipped++;return;}
+          if(dupMode==='ask'){
+            const ok=confirm(`"${rname}" already exists. Update it with the new data?\n\nOK = update · Cancel = skip`);
+            if(!ok){skipped++;return;}
+          }
+          mode='update';
+        }
         // Structured ingredients array?  (name/qty/unit/cal/prot/carbs/fat/fiber per ingredient; cal etc. = totals for that qty)
         let _ings=[];
         if(Array.isArray(r.ingredients)){
@@ -3452,9 +3472,17 @@ function doBulkImport(){
         if(!COURSES.includes(_course))_course='main';
         const rawCats=[...toArr(r.cats),...toArr(r.tags),...toArr(r.categories)];
         const _cats=[...new Set(rawCats.map(c=>String(c==null?'':c).toLowerCase().replace(/ +/g,'-').replace(/[^a-z0-9-]/g,'')).filter(Boolean))];
-        recipes.push({id:Date.now()+Math.random(),name:rname,servings:+(r.servings||1)||1,notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(_vita),iron:Math.round(_iron*10)/10,sodium:Math.round(_sodium),sugar:Math.round(_sugar*10)/10,course:_course,cats:_cats,ingredients:_ings,photo:null,favorite:false,baseId:null,created:Date.now()});
-        existingNames.add(rname.toLowerCase());
-        added++;
+        const fields={name:rname,servings:+(r.servings||1)||1,notes:_notes,directions:r.directions||'',url:r.url||'',cal:Math.round(_cal),prot:Math.round(_prot*10)/10,carbs:Math.round(_carbs*10)/10,fat:Math.round(_fat*10)/10,fiber:Math.round(_fiber*10)/10,vita:Math.round(_vita),iron:Math.round(_iron*10)/10,sodium:Math.round(_sodium),sugar:Math.round(_sugar*10)/10,course:_course,cats:_cats,ingredients:_ings};
+        if(mode==='update'){
+          // Update in place — preserve id, photo, favorite, baseId, created.
+          Object.assign(existing,fields);
+          updated++;
+        }else{
+          const fresh={id:Date.now()+Math.random(),...fields,photo:null,favorite:false,baseId:null,created:Date.now()};
+          recipes.push(fresh);
+          byName[rname.toLowerCase()]=fresh;
+          added++;
+        }
       }catch(e){
         errored++;
         if(errMsgs.length<3)errMsgs.push(`#${i+1} ${r&&r.name?r.name:''}: ${e.message}`);
@@ -3462,12 +3490,16 @@ function doBulkImport(){
     });
     S('fl_recipes',recipes);
     const resEl=document.getElementById('bulk-result');
-    let summary=`✓ Added ${added} recipes, skipped ${skipped} duplicates`;
+    const parts=[];
+    if(added)parts.push(`added ${added}`);
+    if(updated)parts.push(`updated ${updated}`);
+    if(skipped)parts.push(`skipped ${skipped}`);
+    let summary='✓ '+(parts.length?parts.join(', '):'no changes');
     if(errored)summary+=`, ${errored} failed`+(errMsgs.length?' ('+errMsgs.join('; ')+')':'');
     resEl.textContent=summary;
     resEl.style.color=errored?'var(--yellow)':'var(--lime)';
     try{renderRecipes();}catch(e){resEl.textContent=summary+` · render error: ${e.message}`;}
-    if(added>0){toast(`Imported ${added} recipes!`);if(!errored)closeOverlay('overlay-bulk');}
+    if(added>0||updated>0){toast(`${added?`Imported ${added}`:''}${added&&updated?' · ':''}${updated?`Updated ${updated}`:''}`);if(!errored)closeOverlay('overlay-bulk');}
   }catch(err){
     document.getElementById('bulk-result').textContent='Parse error: '+err.message;
     document.getElementById('bulk-result').style.color='var(--red)';
